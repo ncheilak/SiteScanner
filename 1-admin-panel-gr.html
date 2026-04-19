@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="el">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SiteLog — Διαχείριση Εργαζομένων</title>
+<title>SiteLog — Admin Panel</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root {
     --black: #0d0d0d;
@@ -20,17 +20,15 @@
     --gray4: #5a5a5a;
     --green: #2ea84f;
     --red: #d93b3b;
+    --blue: #3b82f6;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--black); color: var(--white); font-family: 'IBM Plex Sans', sans-serif; min-height: 100vh; }
 
   header {
-    background: var(--yellow);
-    color: var(--black);
-    padding: 14px 28px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    background: var(--yellow); color: var(--black);
+    padding: 0 28px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
     border-bottom: 4px solid var(--orange);
     position: sticky; top: 0; z-index: 100;
   }
@@ -38,150 +36,143 @@
   .logo em { color: var(--orange); font-style: normal; }
   .nav-tabs { display: flex; gap: 4px; }
   .tab-btn {
-    background: rgba(0,0,0,0.12);
-    border: none;
-    padding: 7px 18px;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1rem;
-    letter-spacing: 1.5px;
-    color: var(--black);
-    cursor: pointer;
-    border-radius: 2px;
+    background: rgba(0,0,0,0.12); border: none;
+    padding: 7px 18px; font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem; letter-spacing: 1.5px;
+    color: var(--black); cursor: pointer; border-radius: 2px;
     transition: background 0.15s;
   }
   .tab-btn.active, .tab-btn:hover { background: var(--black); color: var(--yellow); }
 
-  .page { display: none; max-width: 1120px; margin: 0 auto; padding: 28px 16px; }
+  /* DB Status bar */
+  .db-bar {
+    background: var(--gray); border-bottom: 1px solid var(--gray3);
+    padding: 7px 28px; display: flex; align-items: center; gap: 12px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem;
+  }
+  .db-bar .status { flex: 1; }
+  .db-bar .status.ok { color: var(--green); }
+  .db-bar .status.err { color: var(--red); }
+  .db-bar .status.loading { color: var(--gray4); }
+
+  .page { display: none; max-width: 1200px; margin: 0 auto; padding: 28px 20px; }
   .page.active { display: block; }
 
   /* Cards */
   .card { background: var(--gray); border: 1px solid var(--gray3); border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
   .card-header {
-    background: var(--gray2);
-    padding: 10px 18px;
-    font-family: 'Bebas Neue', sans-serif;
-    font-size: 1.05rem;
-    letter-spacing: 2px;
-    color: var(--yellow);
+    background: var(--gray2); padding: 10px 18px;
+    font-family: 'Bebas Neue', sans-serif; font-size: 1.05rem;
+    letter-spacing: 2px; color: var(--yellow);
     border-bottom: 2px solid var(--orange);
-    display: flex; align-items: center; justify-content: space-between;
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
   }
   .card-body { padding: 18px; }
 
-  /* Form */
-  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .form-grid.three { grid-template-columns: 1fr 1fr 1fr; }
-  .form-group { display: flex; flex-direction: column; gap: 4px; }
-  .form-group.full { grid-column: 1 / -1; }
-  label {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.62rem;
-    font-weight: 600;
-    color: var(--yellow);
-    text-transform: uppercase;
-    letter-spacing: 1px;
-  }
-  input, select, textarea {
-    background: var(--black);
-    border: 1px solid var(--gray3);
-    border-radius: 2px;
-    color: var(--white);
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 0.88rem;
-    padding: 8px 10px;
-    outline: none;
-    transition: border-color 0.15s;
-    width: 100%;
-  }
-  input:focus, select:focus { border-color: var(--yellow); }
-  select option { background: var(--black); }
-
+  /* Buttons */
   .btn {
     border: none; border-radius: 2px; cursor: pointer;
     font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px;
     transition: opacity 0.15s, transform 0.1s;
-    padding: 10px 20px; font-size: 1rem;
+    padding: 9px 18px; font-size: 0.95rem;
   }
   .btn:active { transform: scale(0.97); }
   .btn-yellow { background: var(--yellow); color: var(--black); }
   .btn-yellow:hover { background: var(--yellow-dk); }
   .btn-orange { background: var(--orange); color: #fff; }
-  .btn-outline { background: transparent; border: 1px solid var(--gray3); color: var(--white); font-size: 0.85rem; }
+  .btn-orange:hover { opacity: 0.88; }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-outline { background: transparent; border: 1px solid var(--gray3); color: var(--white); font-size: 0.82rem; }
   .btn-outline:hover { border-color: var(--yellow); color: var(--yellow); }
-  .btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+  .btn-sm { padding: 5px 12px; font-size: 0.78rem; }
   .btn-red { background: var(--red); color: #fff; }
 
-  /* Worker grid */
-  .worker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  /* ── QR PAGE ── */
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
+  .toolbar input {
+    flex: 1; min-width: 160px;
+    background: var(--black); border: 1px solid var(--gray3);
+    border-radius: 2px; color: var(--white);
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 0.88rem;
+    padding: 7px 10px; outline: none;
+  }
+  .toolbar input:focus { border-color: var(--yellow); }
+
+  .worker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
   .worker-card {
-    background: var(--gray2);
-    border: 1px solid var(--gray3);
-    border-radius: 3px;
-    padding: 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    position: relative;
+    background: var(--gray2); border: 1px solid var(--gray3);
+    border-radius: 3px; padding: 14px;
+    display: flex; flex-direction: column; gap: 10px;
+    transition: border-color 0.15s;
   }
   .worker-card:hover { border-color: var(--yellow); }
-  .worker-name { font-weight: 600; font-size: 1rem; }
-  .worker-meta { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: var(--gray4); line-height: 1.6; }
+  .worker-name { font-weight: 600; font-size: 0.95rem; }
+  .worker-meta { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; color: var(--gray4); line-height: 1.7; }
+  .qr-thumb { display: flex; justify-content: center; }
+  .worker-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
   .badge {
     display: inline-block; padding: 2px 8px; border-radius: 2px;
-    font-family: 'IBM Plex Mono', monospace; font-size: 0.62rem;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem;
     font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
   }
   .badge-yellow { background: rgba(245,200,0,.12); color: var(--yellow); border: 1px solid rgba(245,200,0,.25); }
+  .badge-orange { background: rgba(232,96,10,.12); color: #f0884a; border: 1px solid rgba(232,96,10,.25); }
   .badge-blue   { background: rgba(80,140,255,.12); color: #7ab4ff; border: 1px solid rgba(80,140,255,.25); }
   .badge-green  { background: rgba(46,168,79,.12); color: #5de07a; border: 1px solid rgba(46,168,79,.25); }
-  .badge-orange { background: rgba(232,96,10,.12); color: #f0884a; border: 1px solid rgba(232,96,10,.25); }
   .badge-gray   { background: rgba(90,90,90,.2); color: #aaa; border: 1px solid rgba(90,90,90,.3); }
 
-  .qr-thumb { display: flex; justify-content: center; }
-  .qr-thumb canvas, .qr-thumb img { border-radius: 3px; }
-
-  .worker-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-
-  /* Stats */
-  .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--gray3); border-radius: 3px; overflow: hidden; margin-bottom: 20px; }
-  .stat-box { background: var(--gray2); padding: 14px; text-align: center; }
-  .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 2rem; color: var(--yellow); line-height: 1; }
-  .stat-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 0.6rem; color: var(--gray4); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
-
-  .toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; flex-wrap: wrap; }
-  .toolbar input { flex: 1; min-width: 160px; }
-
-  /* Print badge styles */
-  @media print {
-    body * { visibility: hidden; }
-    #printArea, #printArea * { visibility: visible; }
-    #printArea { position: fixed; top: 0; left: 0; width: 100%; }
+  /* ── ATTENDANCE PAGE ── */
+  .filters {
+    display: flex; gap: 10px; align-items: center;
+    flex-wrap: wrap; margin-bottom: 16px;
   }
-
-  #printArea {
-    display: none;
+  .filters select, .filters input[type="date"], .filters input[type="text"] {
+    background: var(--black); border: 1px solid var(--gray3);
+    border-radius: 2px; color: var(--white);
+    font-family: 'IBM Plex Sans', sans-serif; font-size: 0.88rem;
+    padding: 7px 10px; outline: none;
   }
+  .filters select:focus, .filters input:focus { border-color: var(--yellow); }
+  .filters select option { background: var(--black); }
+  .filters .spacer { flex: 1; }
 
-  .print-badge {
-    width: 85mm;
-    padding: 8mm;
-    border: 2px solid #000;
-    font-family: 'IBM Plex Sans', sans-serif;
-    text-align: center;
-    background: #fff;
-    color: #000;
-    page-break-after: always;
+  .att-table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.83rem; min-width: 600px; }
+  thead th {
+    background: var(--gray2); padding: 8px 10px; text-align: left;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; font-weight: 600;
+    color: var(--gray4); text-transform: uppercase; letter-spacing: 0.8px;
+    border-bottom: 2px solid var(--orange); white-space: nowrap;
   }
-  .print-badge .pb-site { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 2px; margin-bottom: 4px; }
-  .print-badge .pb-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; margin: 4px 0; }
-  .print-badge .pb-trade { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #555; }
-  .print-badge .pb-id { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: #888; margin-top: 4px; }
-  .print-badge .pb-qr { margin: 8px auto; display: flex; justify-content: center; }
-  .print-badge .pb-bar { background: #000; color: #fff; font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 0.85rem; padding: 3px 0; margin-top: 6px; }
+  tbody tr { border-bottom: 1px solid var(--gray3); transition: background 0.08s; }
+  tbody tr:hover { background: rgba(245,200,0,0.03); }
+  td { padding: 9px 10px; vertical-align: middle; }
+  .td-mono { font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; color: var(--gray4); }
+  .td-time { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; color: var(--green); font-weight: 600; }
+  .td-site { font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem; }
 
+  /* ── STATS PAGE ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 1px; background: var(--gray3); border-radius: 3px; overflow: hidden; margin-bottom: 20px; }
+  .stat-box { background: var(--gray2); padding: 18px; text-align: center; }
+  .stat-num { font-family: 'Bebas Neue', sans-serif; font-size: 2.4rem; color: var(--yellow); line-height: 1; }
+  .stat-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; color: var(--gray4); text-transform: uppercase; letter-spacing: 1px; margin-top: 4px; }
+
+  .site-stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap: 14px; margin-bottom: 20px; }
+  .site-stat-card {
+    background: var(--gray2); border: 1px solid var(--gray3);
+    border-left: 4px solid var(--orange); border-radius: 3px; padding: 16px;
+  }
+  .site-stat-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 2px; color: var(--white); margin-bottom: 8px; }
+  .site-stat-row { display: flex; justify-content: space-between; font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: var(--gray4); padding: 3px 0; border-bottom: 1px solid var(--gray3); }
+  .site-stat-row:last-child { border-bottom: none; }
+  .site-stat-row span { color: var(--yellow); font-weight: 600; }
+
+  /* Empty states */
   .empty { text-align: center; padding: 50px 20px; color: var(--gray4); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; }
   .empty .icon { font-size: 2.5rem; margin-bottom: 10px; }
 
+  /* Toast */
   .toast {
     position: fixed; bottom: 24px; right: 24px;
     background: var(--green); color: #fff;
@@ -190,413 +181,390 @@
     opacity: 0; transform: translateY(8px);
     transition: opacity 0.2s, transform 0.2s;
     pointer-events: none; z-index: 999;
+    max-width: calc(100vw - 48px);
   }
   .toast.show { opacity: 1; transform: translateY(0); }
 
-  @media (max-width: 600px) {
-    .form-grid, .form-grid.three { grid-template-columns: 1fr; }
-    .stats-row { grid-template-columns: 1fr 1fr; }
-    .nav-tabs .tab-btn { padding: 6px 10px; font-size: 0.85rem; }
+  /* Spinner */
+  .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid var(--gray3); border-top-color: var(--yellow); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 5px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Print */
+  @media print {
+    body * { visibility: hidden; }
+    #printArea, #printArea * { visibility: visible; }
+    #printArea { position: fixed; top: 0; left: 0; width: 100%; }
+  }
+  #printArea { display: none; }
+  .print-badge {
+    width: 85mm; padding: 8mm; border: 2px solid #000;
+    font-family: 'IBM Plex Sans', sans-serif; text-align: center;
+    background: #fff; color: #000; page-break-after: always;
+    display: inline-block;
+  }
+  .pb-site { font-family: 'Bebas Neue', sans-serif; font-size: 1rem; letter-spacing: 2px; margin-bottom: 4px; }
+  .pb-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.4rem; margin: 4px 0; }
+  .pb-trade { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; color: #555; }
+  .pb-id { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: #888; margin-top: 4px; }
+  .pb-qr { margin: 8px auto; display: flex; justify-content: center; }
+  .pb-bar { background: #000; color: #fff; font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px; font-size: 0.85rem; padding: 3px 0; margin-top: 6px; }
+
+  @media (max-width: 640px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .nav-tabs .tab-btn { padding: 6px 10px; font-size: 0.85rem; letter-spacing: 1px; }
+    header { padding: 0 14px; }
+    .page { padding: 16px 12px; }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">Site<em>Log</em> <span style="font-size:1rem;letter-spacing:1px;opacity:.6">ADMIN (DB)</span></div>
+  <div class="logo">Site<em>Log</em> <span style="font-size:1rem;letter-spacing:1px;opacity:.6">ADMIN</span></div>
   <div class="nav-tabs">
-    <button class="tab-btn active" onclick="showPage('register', this)" id="btn-tab-register">⛑ Εγγραφή</button>
-    <button class="tab-btn" onclick="showPage('workers', this)" id="btn-tab-workers">👷 Εργαζόμενοι</button>
+    <button class="tab-btn active" onclick="showPage('qr', this)">🪪 QR Badges</button>
+    <button class="tab-btn" onclick="showPage('attendance', this)">📋 Παρουσίες</button>
+    <button class="tab-btn" onclick="showPage('stats', this)">📊 Στατιστικά</button>
   </div>
 </header>
 
-<div class="page active" id="page-register">
-  <div class="card">
-    <div class="card-header">Εγγραφή Νέου Εργαζομένου</div>
-    <div class="card-body">
-      <div class="form-grid">
-        <div class="form-group">
-          <label>Α.Μ.Α. *</label>
-          <input type="text" id="ama" placeholder="000000000">
-        </div>
-        <div class="form-group">
-          <label>Α.Μ.Κ.Α. *</label>
-          <input type="text" id="amka" placeholder="00000000000">
-        </div>
-        <div class="form-group">
-          <label>Α.Φ.Μ.</label>
-          <input type="text" id="afm" placeholder="000000000">
-        </div>
-        <div class="form-group">
-          <label>ΑΡ. ΑΔ. ΕΡΓΑΣΙΑΣ</label>
-          <input type="text" id="arAd" placeholder="000000">
-        </div>
-        <div class="form-group">
-          <label>ΕΠΩΝΥΜΟ *</label>
-          <input type="text" id="eponimo" placeholder="Παπαδόπουλος">
-        </div>
-        <div class="form-group">
-          <label>ΟΝΟΜΑ *</label>
-          <input type="text" id="onoma" placeholder="Γιώργης">
-        </div>
-        <div class="form-group full">
-          <label>ΠΑΤΡΩΝΥΜΟ</label>
-          <input type="text" id="patronimo" placeholder="Νικόλαος">
-        </div>
-        <div class="form-group full">
-          <label>ΕΙΔΙΚΟΤΗΤΑ *</label>
-          <input type="text" id="eidikotita" placeholder="π.χ. Χτίστης, Σιδηρουργός…">
-        </div>
-        <div class="form-group full">
-          <label>ΦΑΣΗ ΚΑΤΑΣΚΕΥΗΣ *</label>
-          <select id="fasi">
-            <option value="">— Επιλογή —</option>
-            <option>01: Εκσκαφές &amp; Οικοδομικός Σκελετός</option>
-            <option>02: Τοιχοποιίες</option>
-            <option>03: Επιχρίσματα (Σοβατίσματα)</option>
-            <option>04: Δάπεδα - Επενδύσεις</option>
-            <option>05: Διάφορες Εργασίες</option>
-            <option>06: Εργασίες Εγκαταστάσεων</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>ΕΡΓΟΛΑΒΟΣ</label>
-          <input type="text" id="ergolabos" placeholder="Επωνυμία εργολάβου">
-        </div>
-        <div class="form-group">
-          <label>ΑΦΜ ΕΡΓΟΛΑΒΟΥ</label>
-          <input type="text" id="afmErg" placeholder="000000000">
-        </div>
-      </div>
-      <div style="margin-top:16px; display:flex; gap:10px; flex-wrap:wrap;">
-        <button class="btn btn-yellow" onclick="registerWorker()" id="btnSubmitReg">+ Εγγραφή & Δημιουργία QR</button>
-        <button class="btn btn-outline" onclick="clearRegForm()">Καθαρισμός</button>
-      </div>
-    </div>
-  </div>
+<div class="db-bar">
+  <span id="dbStatus" class="status loading"><span class="spinner"></span>Σύνδεση στο Supabase…</span>
+  <button class="btn btn-outline btn-sm" onclick="loadAll()">↻ Ανανέωση</button>
 </div>
 
-<div class="page" id="page-workers">
-  <div class="stats-row" id="statsRow">
-    <div class="stat-box"><div class="stat-num" id="sTot">0</div><div class="stat-lbl">ΣΥΝΟΛΟ ΕΡΓΑΤΩΝ</div></div>
-    <div class="stat-box"><div class="stat-num" id="sTrades" style="color:var(--orange)">0</div><div class="stat-lbl">ΕΙΔΙΚΟΤΗΤΕΣ</div></div>
-    <div class="stat-box"><div class="stat-num" id="sCompanies" style="color:#7ab4ff">0</div><div class="stat-lbl">ΕΡΓΟΛΑΒΟΙ</div></div>
-    <div class="stat-box"><div class="stat-num" id="sExpiring" style="color:var(--red)">0</div><div class="stat-lbl">ΑΝΑΝΕΩΣΕΙΣ</div></div>
-  </div>
-
+<!-- ══ PAGE: QR BADGES ══ -->
+<div class="page active" id="page-qr">
   <div class="card">
     <div class="card-header">
-      <span>Worker Registry</span>
-      <div style="display:flex;gap:8px;">
-        <button class="btn btn-outline btn-sm" onclick="exportDB()">⬇ Λήψη JSON (Backup)</button>
+      <span>QR Badges Εργαζομένων</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-outline btn-sm" onclick="regenAllQR()">🔄 Αναγέννηση QR</button>
         <button class="btn btn-yellow btn-sm" onclick="printAllBadges()">🖨 Εκτύπωση Όλων</button>
       </div>
     </div>
     <div class="card-body">
       <div class="toolbar">
-        <input type="text" id="workerSearch" placeholder="🔍 Search name, trade, company…" oninput="renderWorkers()">
+        <input type="text" id="workerSearch" placeholder="🔍 Αναζήτηση ονόματος, ειδικότητας, εργολάβου…" oninput="renderWorkers()">
+        <div id="workerCount" style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--gray4);white-space:nowrap;"></div>
       </div>
-      <div class="worker-grid" id="workerGrid"></div>
-      <div class="empty" id="workerEmpty" style="display:none">
-        <div class="icon">👷</div>
-        Δεν βρέθηκαν εργαζόμενοι.<br>Πηγαίνετε στην Εγγραφή για να προσθέσετε.
+      <div class="worker-grid" id="workerGrid">
+        <div class="empty"><div class="icon">⏳</div>Φόρτωση εργαζομένων…</div>
       </div>
     </div>
   </div>
 </div>
 
-<div id="printArea"></div>
+<!-- ══ PAGE: ATTENDANCE ══ -->
+<div class="page" id="page-attendance">
+  <div class="card">
+    <div class="card-header">
+      <span>Αρχείο Παρουσιών</span>
+      <button class="btn btn-orange btn-sm" onclick="exportAttCSV()">⬇ Εξαγωγή CSV</button>
+    </div>
+    <div class="card-body">
+      <div class="filters">
+        <select id="filterSite" onchange="loadAttendance()">
+          <option value="">— Όλα τα Εργοτάξια —</option>
+        </select>
+        <input type="date" id="filterDateFrom" onchange="loadAttendance()" title="Από">
+        <input type="date" id="filterDateTo" onchange="loadAttendance()" title="Έως">
+        <input type="text" id="filterWorker" placeholder="🔍 Εργαζόμενος…" oninput="renderAttendance()" style="min-width:160px;">
+        <div class="spacer"></div>
+        <button class="btn btn-outline btn-sm" onclick="setToday()">Σήμερα</button>
+        <div id="attCount" style="font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:var(--gray4);white-space:nowrap;"></div>
+      </div>
+      <div class="att-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Εργοτάξιο</th>
+              <th>Ημερομηνία</th>
+              <th>Ώρα Εισόδου</th>
+              <th>Επώνυμο</th>
+              <th>Όνομα</th>
+              <th>Ειδικότητα</th>
+              <th>Φάση</th>
+              <th>Εργολάβος</th>
+              <th>Worker ID</th>
+            </tr>
+          </thead>
+          <tbody id="attBody">
+            <tr><td colspan="10" class="empty">Φόρτωση…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
 
+<!-- ══ PAGE: STATS ══ -->
+<div class="page" id="page-stats">
+  <div class="stats-grid" id="statsGrid">
+    <div class="stat-box"><div class="stat-num" id="sTotWorkers">—</div><div class="stat-lbl">Εργαζόμενοι</div></div>
+    <div class="stat-box"><div class="stat-num" id="sTotCheckins" style="color:var(--green)">—</div><div class="stat-lbl">Check-ins Σήμερα</div></div>
+    <div class="stat-box"><div class="stat-num" id="sTotSites" style="color:var(--orange)">—</div><div class="stat-lbl">Εργοτάξια</div></div>
+    <div class="stat-box"><div class="stat-num" id="sTotCompanies" style="color:#7ab4ff">—</div><div class="stat-lbl">Εργολάβοι</div></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">Παρουσίες Σήμερα ανά Εργοτάξιο</div>
+    <div class="card-body">
+      <div class="site-stats-grid" id="siteStatsGrid">
+        <div class="empty">Φόρτωση…</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span>Ιστορικό Check-ins (τελευταίες 7 ημέρες)</span>
+    </div>
+    <div class="card-body">
+      <div id="weekStats" style="font-family:'IBM Plex Mono',monospace;font-size:0.8rem;color:var(--gray4);">Φόρτωση…</div>
+    </div>
+  </div>
+</div>
+
+<div id="printArea"></div>
 <div class="toast" id="toast"></div>
 
 <script>
-  // --- Supabase Config ---
-  const supabaseUrl = 'https://nlrkhehgkfwdkxuknwwo.supabase.co';
-  const supabaseKey = 'sb_publishable_ybrvNyLSgHkqcn3TlLJZQQ_uyj9_aBI';
-  const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+  // ── SUPABASE ──
+  const SUPABASE_URL = 'https://nlrkhehgkfwdkxuknwwo.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_ybrvNyLSgHkqcn3TlLJZQQ_uyj9_aBI';
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  let workers = [];
+  // ── STATE ──
+  let workers    = [];
+  let sites      = [];
+  let attRecords = []; // raw from Supabase
+  let qrCache    = {}; // worker.id → dataURL
 
-  // Διορθωμένη συνάρτηση πλοήγησης που δεν κρασάρει αν καλεστεί μέσα από κώδικα (χωρίς event)
-  function showPage(id, btnElement = null) {
+  // ── INIT ──
+  async function loadAll() {
+    setStatus('loading', 'Σύνδεση στο Supabase…');
+    await Promise.all([loadWorkers(), loadSites()]);
+    await loadAttendance();
+    await loadStats();
+    renderWorkers();
+    populateSiteFilter();
+  }
+
+  // ── NAVIGATION ──
+  function showPage(id, btn) {
     document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.getElementById('page-' + id).classList.add('active');
-    
-    if (btnElement) {
-        btnElement.classList.add('active');
-    } else {
-        if(id === 'register') document.getElementById('btn-tab-register').classList.add('active');
-        if(id === 'workers') document.getElementById('btn-tab-workers').classList.add('active');
-    }
-
-    if (id === 'workers') {
-        fetchWorkersFromSupabase(); // Φόρτωση δεδομένων από τη Βάση
-    }
+    if (btn) btn.classList.add('active');
+    else document.querySelectorAll('.tab-btn')[['qr','attendance','stats'].indexOf(id)]?.classList.add('active');
+    if (id === 'stats') loadStats();
   }
 
+  // ── STATUS BAR ──
+  function setStatus(state, msg) {
+    const el = document.getElementById('dbStatus');
+    el.innerHTML = (state === 'loading' ? '<span class="spinner"></span>' : '') + msg;
+    el.className = 'status ' + (state === 'ok' ? 'ok' : state === 'err' ? 'err' : 'loading');
+  }
+
+  // ── TOAST ──
   function showToast(msg, color) {
     const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.style.background = color || '#2ea84f';
-    t.classList.add('show');
-    setTimeout(() => t.classList.remove('show'), 2800);
+    t.textContent = msg; t.style.background = color || '#2ea84f';
+    t.classList.add('show'); clearTimeout(t._t);
+    t._t = setTimeout(() => t.classList.remove('show'), 3000);
   }
 
-  function genId() {
-    const nums = workers.map(w => parseInt(w.id?.replace('W-','')) || 0);
-    const next = nums.length ? Math.max(...nums) + 1 : 1001;
-    return 'W-' + next;
+  // ── LOAD WORKERS ──
+  async function loadWorkers() {
+    const { data, error } = await db.from('workers').select('*').order('eponimo');
+    if (error) { setStatus('err', '⚠ Σφάλμα φόρτωσης: ' + error.message); return; }
+    workers = (data || []).map(w => ({
+      id:           w.id,
+      ama:          w.ama || '',
+      amka:         w.amka || '',
+      eponimo:      w.eponimo || '',
+      onoma:        w.onoma || '',
+      eidikotita:   w.eidikotita || '',
+      fasi:         w.fasi || '',
+      ergolabos:    w.ergolabos || '',
+      afmErgolabou: w.afm_ergolabou || '',
+      registeredAt: w.registered_at || '',
+    }));
+    setStatus('ok', `✓ ${workers.length} εργαζόμενοι · ${sites.length} εργοτάξια`);
   }
 
-  function tradeBadgeClass(t) { return 'badge-yellow'; }
+  // ── LOAD SITES ──
+  async function loadSites() {
+    const { data, error } = await db.from('sites').select('*').order('id');
+    if (error) return;
+    sites = data || [];
+  }
 
-  // --- QR generation using qrcode-generator library ---
+  // ── POPULATE SITE FILTER ──
+  function populateSiteFilter() {
+    const sel = document.getElementById('filterSite');
+    // Keep first option
+    sel.innerHTML = '<option value="">— Όλα τα Εργοτάξια —</option>';
+    sites.forEach(s => {
+      const opt = document.createElement('option');
+      opt.value = s.id; opt.textContent = s.name;
+      sel.appendChild(opt);
+    });
+  }
+
+  // ── QR GENERATION ──
   function generateQRDataUrl(worker) {
     return new Promise((resolve, reject) => {
       try {
         const payload = JSON.stringify({
           id:    worker.id,
-          fn:    worker.eponimo || '',
-          ln:    worker.onoma || '',
-          trade: worker.eidikotita || '',
-          fasi:  worker.fasi || '',
-          erg:   worker.ergolabos || ''
+          fn:    worker.eponimo,
+          ln:    worker.onoma,
+          trade: worker.eidikotita,
+          fasi:  worker.fasi,
+          erg:   worker.ergolabos,
+          ama:   worker.ama,
+          amka:  worker.amka,
         });
-
         const qr = qrcode(0, 'M');
-        const utf8Payload = unescape(encodeURIComponent(payload));
-        qr.addData(utf8Payload);
+        qr.addData(payload);
         qr.make();
-
         const SIZE = 400;
         const canvas = document.createElement('canvas');
-        canvas.width  = SIZE;
-        canvas.height = SIZE;
+        canvas.width = SIZE; canvas.height = SIZE;
         const ctx = canvas.getContext('2d');
-
-        const moduleCount = qr.getModuleCount();
-        const cellSize    = SIZE / moduleCount;
-
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(0, 0, SIZE, SIZE);
-
-        ctx.fillStyle = '#000000';
-        for (let row = 0; row < moduleCount; row++) {
-          for (let col = 0; col < moduleCount; col++) {
-            if (qr.isDark(row, col)) {
-              ctx.fillRect(
-                Math.floor(col * cellSize),
-                Math.floor(row * cellSize),
-                Math.ceil(cellSize),
-                Math.ceil(cellSize)
-              );
-            }
+        const mc = qr.getModuleCount();
+        const cs = SIZE / mc;
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, SIZE, SIZE);
+        ctx.fillStyle = '#000';
+        for (let r = 0; r < mc; r++) {
+          for (let c = 0; c < mc; c++) {
+            if (qr.isDark(r, c)) ctx.fillRect(Math.floor(c*cs), Math.floor(r*cs), Math.ceil(cs), Math.ceil(cs));
           }
         }
-
         resolve(canvas.toDataURL('image/png'));
-      } catch (e) {
-        reject(e);
-      }
+      } catch(e) { reject(e); }
     });
   }
 
-  // Λήψη δεδομένων από Supabase
-  async function fetchWorkersFromSupabase() {
-    const { data, error } = await supabase.from('workers').select('*').order('registeredAt', { ascending: false });
-    if (error) {
-        showToast('Σφάλμα: ' + error.message, '#d93b3b');
-        return;
+  async function getQR(worker) {
+    if (!qrCache[worker.id]) {
+      qrCache[worker.id] = await generateQRDataUrl(worker);
     }
-    workers = data || [];
-    renderWorkers();
+    return qrCache[worker.id];
   }
 
-  async function registerWorker() {
-    const ama   = document.getElementById('ama').value.trim();
-    const amka  = document.getElementById('amka').value.trim();
-    const eponimo    = document.getElementById('eponimo').value.trim();
-    const onoma      = document.getElementById('onoma').value.trim();
-    const eidikotita = document.getElementById('eidikotita').value.trim();
-    const fasi       = document.getElementById('fasi').value;
-    if (!ama)        { showToast('⚠ Απαιτείται Α.Μ.Α.', '#e8600a'); return; }
-    if (!amka)       { showToast('⚠ Απαιτείται Α.Μ.Κ.Α.', '#e8600a'); return; }
-    if (!eponimo)    { showToast('⚠ Απαιτείται Επώνυμο', '#e8600a'); return; }
-    if (!onoma)      { showToast('⚠ Απαιτείται Όνομα', '#e8600a'); return; }
-    if (!eidikotita) { showToast('⚠ Απαιτείται Ειδικότητα', '#e8600a'); return; }
-    if (!fasi)       { showToast('⚠ Επιλέξτε Φάση Κατασκευής', '#e8600a'); return; }
-
-    const btn = document.getElementById('btnSubmitReg');
-    btn.disabled = true;
-    btn.textContent = 'Αποθήκευση...';
-
-    const id = genId();
-
-    const worker = {
-      id, ama, amka,
-      afm: document.getElementById('afm').value.trim(),
-      arAdErgasias: document.getElementById('arAd').value.trim(),
-      eponimo, onoma,
-      patronimo: document.getElementById('patronimo').value.trim(),
-      eidikotita, fasi,
-      ergolabos: document.getElementById('ergolabos').value.trim(),
-      afmErgolabou: document.getElementById('afmErg').value.trim(),
-      registeredAt: new Date().toISOString()
-    };
-    
-    // Δημιουργία QR
-    worker.qrData = await generateQRDataUrl(worker);
-
-    // Εγγραφή στο Supabase
-    const { data, error } = await supabase.from('workers').insert([worker]).select();
-
-    btn.disabled = false;
-    btn.textContent = '+ Εγγραφή & Δημιουργία QR';
-
-    if (error) {
-        showToast('Σφάλμα: ' + error.message, '#d93b3b');
-        return;
-    }
-
-    // Προσθήκη τοπικά για άμεση εμφάνιση
-    workers.unshift(data[0]);
-    showToast(`✓ ${eponimo} ${onoma} — ID: ${id}`);
-    clearRegForm();
-
-    // Αλλαγή σελίδας
-    showPage('workers');
-  }
-
-  function clearRegForm() {
-    ['ama','amka','afm','arAd','eponimo','onoma','patronimo','eidikotita','ergolabos','afmErg'].forEach(id =>
-      document.getElementById(id).value = '');
-    document.getElementById('fasi').value = '';
-  }
-
-  function renderWorkers() {
+  // ── RENDER WORKERS (QR PAGE) ──
+  async function renderWorkers() {
     const q = (document.getElementById('workerSearch')?.value || '').toLowerCase();
     const grid = document.getElementById('workerGrid');
-    const empty = document.getElementById('workerEmpty');
-
     const filtered = workers.filter(w =>
-      (w.eponimo+' '+w.onoma+' '+w.ama+' '+w.amka+' '+w.eidikotita+' '+w.ergolabos).toLowerCase().includes(q)
+      (w.eponimo + ' ' + w.onoma + ' ' + w.eidikotita + ' ' + w.ergolabos + ' ' + w.id).toLowerCase().includes(q)
     );
-
-    // Stats
-    const trades = new Set(workers.map(w => w.eidikotita));
-    const companies = new Set(workers.map(w => w.ergolabos).filter(Boolean));
-    const expiring = 0;
-    document.getElementById('sTot').textContent = workers.length;
-    document.getElementById('sTrades').textContent = trades.size;
-    document.getElementById('sCompanies').textContent = companies.size;
-    document.getElementById('sExpiring').textContent = expiring;
+    document.getElementById('workerCount').textContent = `${filtered.length} / ${workers.length} εργαζόμενοι`;
 
     if (filtered.length === 0) {
-      grid.innerHTML = '';
-      empty.style.display = 'block';
+      grid.innerHTML = '<div class="empty"><div class="icon">👷</div>Δεν βρέθηκαν εργαζόμενοι.</div>';
       return;
     }
-    empty.style.display = 'none';
 
+    // Render cards without QR first (fast)
     grid.innerHTML = filtered.map(w => `
       <div class="worker-card" id="wcard-${w.id}">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <div>
-            <div class="worker-name">${w.eponimo || ''} ${w.onoma || ''}</div>
-            <span class="badge badge-yellow" style="margin-top:4px;font-size:0.6rem">${w.eidikotita || '—'}</span>
+            <div class="worker-name">${w.eponimo} ${w.onoma}</div>
+            <span class="badge badge-yellow" style="margin-top:4px">${w.eidikotita || '—'}</span>
           </div>
-          <span class="badge badge-gray" style="font-size:0.6rem">${w.id}</span>
+          <span class="badge badge-gray" style="font-size:0.58rem;flex-shrink:0">${w.id}</span>
         </div>
         <div class="worker-meta">
-          ${w.fasi ? '🏗 ' + w.fasi + '<br>' : ''}
-          ${w.ergolabos ? '🏢 ' + w.ergolabos + '<br>' : ''}
-          ΑΜΑ: ${w.ama || '—'} | ΑΜΚΑ: ${w.amka || '—'}<br>
-          📅 ${w.registeredAt?.slice(0,10) || '—'}
+          ${w.ergolabos ? '🏗 ' + w.ergolabos + '<br>' : ''}
+          ${w.fasi ? '📐 ' + w.fasi + '<br>' : ''}
+          ${w.ama ? '🪪 ΑΜΑ: ' + w.ama : ''}
         </div>
-        ${w.qrData ? `<div class="qr-thumb"><img src="${w.qrData}" width="120" height="120" style="border-radius:3px;border:2px solid #fff;image-rendering:pixelated"></div>` : '<div class="qr-thumb" style="color:#555;font-size:0.7rem;font-family:monospace">No QR</div>'}
+        <div class="qr-thumb" id="qr-${w.id}">
+          <div style="width:120px;height:120px;background:var(--gray3);border-radius:3px;display:flex;align-items:center;justify-content:center;">
+            <span class="spinner"></span>
+          </div>
+        </div>
         <div class="worker-actions">
-          <button class="btn btn-yellow btn-sm" onclick="printBadge('${w.id}')">🖨 Εκτύπωση</button>
-          <button class="btn btn-red btn-sm" onclick="deleteWorker('${w.id}')">✕ Διαγραφή</button>
+          <button class="btn btn-yellow btn-sm" onclick="printBadge('${w.id}')">🖨 Badge</button>
+          <button class="btn btn-outline btn-sm" onclick="downloadQR('${w.id}')">⬇ QR</button>
         </div>
       </div>
     `).join('');
+
+    // Generate QR codes asynchronously
+    for (const w of filtered) {
+      try {
+        const url = await getQR(w);
+        const el = document.getElementById('qr-' + w.id);
+        if (el) el.innerHTML = `<img src="${url}" width="120" height="120" style="border-radius:3px;border:2px solid #fff;image-rendering:pixelated">`;
+      } catch(e) {
+        console.error('QR gen error:', e);
+      }
+    }
   }
 
-  async function deleteWorker(id) {
+  async function regenAllQR() {
+    qrCache = {};
+    showToast('Αναγέννηση QR codes…', '#e8600a');
+    await renderWorkers();
+    showToast(`✓ QR codes αναγεννήθηκαν για ${workers.length} εργαζόμενους`);
+  }
+
+  async function downloadQR(id) {
     const w = workers.find(x => x.id === id);
     if (!w) return;
-    if (!confirm(`Αφαίρεση ${w.eponimo || ''} ${w.onoma || ''} από το Supabase;`)) return;
-    
-    const { error } = await supabase.from('workers').delete().eq('id', id);
-    
-    if (error) {
-        showToast('Σφάλμα: ' + error.message, '#d93b3b');
-        return;
-    }
-
-    workers = workers.filter(x => x.id !== id);
-    renderWorkers();
-    showToast('Ο εργαζόμενος διαγράφηκε οριστικά');
-  }
-
-  // Export DB as JSON file (Backup)
-  function exportDB() {
-    const blob = new Blob([JSON.stringify(workers, null, 2)], { type: 'application/json' });
+    const url = await getQR(w);
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'workers_backup.json';
+    a.href = url;
+    a.download = `QR-${w.id}-${w.eponimo}-${w.onoma}.png`;
     a.click();
-    URL.revokeObjectURL(a.href);
-    showToast('✓ Το backup ελήφθη');
   }
 
-  // Print single badge
   async function printBadge(id) {
     const w = workers.find(x => x.id === id);
     if (!w) return;
-
-    let qrSrc = w.qrData;
-    if (!qrSrc) {
-      qrSrc = await generateQRDataUrl(w);
-    }
-
+    const qrSrc = await getQR(w);
     const area = document.getElementById('printArea');
     area.innerHTML = `
       <div class="print-badge">
-        <div class="pb-site">⛑ ΤΑΥΤΟΤΗΤΑ ΕΡΓΑΖΟΜΕΝΟΥ</div>
-        <div class="pb-name">${w.eponimo || ''} ${w.onoma || ''}</div>
-        <div class="pb-trade">${w.eidikotita || ''}${w.fasi ? ' | ' + w.fasi : ''}${w.ergolabos ? '<br>' + w.ergolabos : ''}</div>
+        <div class="pb-site">⛑ SITE ACCESS BADGE</div>
+        <div class="pb-name">${w.eponimo} ${w.onoma}</div>
+        <div class="pb-trade">${w.eidikotita}${w.ergolabos ? ' · ' + w.ergolabos : ''}</div>
         <div class="pb-qr"><img src="${qrSrc}" width="200" height="200" style="image-rendering:pixelated"></div>
-        <div class="pb-id">ΑΜΑ: ${w.ama || '—'} | ΑΜΚΑ: ${w.amka || '—'}</div>
-        <div class="pb-bar">ΣΑΡΩΣΗ ΓΙΑ ΠΑΡΟΥΣΙΑ</div>
+        <div class="pb-id">ID: ${w.id} | ΑΜΑ: ${w.ama || '—'}</div>
+        <div class="pb-bar">ΣΑΡΩΣΤΕ ΓΙΑ CHECK-IN</div>
       </div>`;
     area.style.display = 'block';
-    
     setTimeout(() => {
       window.print();
       setTimeout(() => { area.style.display = 'none'; area.innerHTML = ''; }, 1000);
     }, 300);
   }
 
-  // Print all badges
   async function printAllBadges() {
-    if (workers.length === 0) { showToast('Δεν υπάρχουν εργαζόμενοι για εκτύπωση', '#e8600a'); return; }
+    if (!workers.length) { showToast('Δεν υπάρχουν εργαζόμενοι', '#e8600a'); return; }
     showToast('Προετοιμασία badges…', '#e8600a');
-
     const area = document.getElementById('printArea');
     area.innerHTML = '';
     for (const w of workers) {
-      const qrSrc = w.qrData || await generateQRDataUrl(w);
+      const qrSrc = await getQR(w);
       const div = document.createElement('div');
       div.className = 'print-badge';
       div.innerHTML = `
-        <div class="pb-site">⛑ ΤΑΥΤΟΤΗΤΑ ΕΡΓΑΖΟΜΕΝΟΥ</div>
-        <div class="pb-name">${w.eponimo || ''} ${w.onoma || ''}</div>
-        <div class="pb-trade">${w.eidikotita || ''}${w.fasi ? ' | ' + w.fasi : ''}${w.ergolabos ? '<br>' + w.ergolabos : ''}</div>
+        <div class="pb-site">⛑ SITE ACCESS BADGE</div>
+        <div class="pb-name">${w.eponimo} ${w.onoma}</div>
+        <div class="pb-trade">${w.eidikotita}${w.ergolabos ? ' · ' + w.ergolabos : ''}</div>
         <div class="pb-qr"><img src="${qrSrc}" width="200" height="200" style="image-rendering:pixelated"></div>
-        <div class="pb-id">ΑΜΑ: ${w.ama || '—'} | ΑΜΚΑ: ${w.amka || '—'}</div>
-        <div class="pb-bar">ΣΑΡΩΣΗ ΓΙΑ ΠΑΡΟΥΣΙΑ</div>`;
+        <div class="pb-id">ID: ${w.id} | ΑΜΑ: ${w.ama || '—'}</div>
+        <div class="pb-bar">ΣΑΡΩΣΤΕ ΓΙΑ CHECK-IN</div>`;
       area.appendChild(div);
     }
     area.style.display = 'block';
@@ -604,10 +572,164 @@
       window.print();
       setTimeout(() => { area.style.display = 'none'; area.innerHTML = ''; }, 1000);
     }, 400);
+    showToast(`✓ ${workers.length} badges για εκτύπωση`);
   }
 
-  // Αρχική Φόρτωση από τη βάση κατά το άνοιγμα
-  fetchWorkersFromSupabase();
+  // ── LOAD ATTENDANCE ──
+  async function loadAttendance() {
+    const siteId   = document.getElementById('filterSite')?.value;
+    const dateFrom = document.getElementById('filterDateFrom')?.value;
+    const dateTo   = document.getElementById('filterDateTo')?.value;
+
+    let query = db
+      .from('attendance_log')
+      .select('*, sites(name)')
+      .order('log_date', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (siteId)   query = query.eq('site_id', siteId);
+    if (dateFrom) query = query.gte('log_date', dateFrom);
+    if (dateTo)   query = query.lte('log_date', dateTo);
+
+    const { data, error } = await query.limit(500);
+    if (error) { showToast('⚠ Σφάλμα φόρτωσης παρουσιών', '#e8600a'); return; }
+    attRecords = data || [];
+    renderAttendance();
+  }
+
+  function renderAttendance() {
+    const q = (document.getElementById('filterWorker')?.value || '').toLowerCase();
+    const filtered = attRecords.filter(r =>
+      (r.eponimo + ' ' + r.onoma + ' ' + r.eidikotita + ' ' + r.ergolabos + ' ' + (r.worker_id||'')).toLowerCase().includes(q)
+    );
+
+    document.getElementById('attCount').textContent = `${filtered.length} εγγραφές`;
+
+    if (filtered.length === 0) {
+      document.getElementById('attBody').innerHTML = '<tr><td colspan="10"><div class="empty">Δεν βρέθηκαν παρουσίες.</div></td></tr>';
+      return;
+    }
+
+    document.getElementById('attBody').innerHTML = filtered.map((r, i) => `
+      <tr>
+        <td class="td-mono">${i + 1}</td>
+        <td><span class="badge badge-orange">${r.sites?.name || '—'}</span></td>
+        <td class="td-mono">${r.log_date || '—'}</td>
+        <td class="td-time">${r.time_in || '—'}</td>
+        <td style="font-weight:600">${r.eponimo || '—'}</td>
+        <td>${r.onoma || '—'}</td>
+        <td><span class="badge badge-yellow">${r.eidikotita || '—'}</span></td>
+        <td class="td-mono" style="font-size:0.7rem">${r.fasi || '—'}</td>
+        <td class="td-mono">${r.ergolabos || '—'}</td>
+        <td class="td-mono" style="color:var(--gray4)">${r.worker_id || '—'}</td>
+      </tr>
+    `).join('');
+  }
+
+  function setToday() {
+    const today = new Date().toISOString().slice(0, 10);
+    document.getElementById('filterDateFrom').value = today;
+    document.getElementById('filterDateTo').value = today;
+    loadAttendance();
+  }
+
+  function exportAttCSV() {
+    const q = (document.getElementById('filterWorker')?.value || '').toLowerCase();
+    const filtered = attRecords.filter(r =>
+      (r.eponimo + ' ' + r.onoma + ' ' + r.eidikotita + ' ' + r.ergolabos + ' ' + (r.worker_id||'')).toLowerCase().includes(q)
+    );
+    if (!filtered.length) { showToast('Δεν υπάρχουν εγγραφές', '#e8600a'); return; }
+    const headers = ['#','Εργοτάξιο','Ημερομηνία','Ώρα Εισόδου','Επώνυμο','Όνομα','Ειδικότητα','Φάση','Εργολάβος','Worker ID'];
+    const rows = filtered.map((r, i) => [
+      i+1, r.sites?.name||'', r.log_date||'', r.time_in||'',
+      r.eponimo||'', r.onoma||'', r.eidikotita||'',
+      r.fasi||'', r.ergolabos||'', r.worker_id||''
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    const siteEl = document.getElementById('filterSite');
+    const siteName = siteEl.options[siteEl.selectedIndex]?.text || 'all-sites';
+    const from = document.getElementById('filterDateFrom').value || 'all';
+    a.download = `sitelog-${siteName}-${from}.csv`;
+    a.click(); URL.revokeObjectURL(a.href);
+    showToast(`✓ CSV εξαγωγή ${filtered.length} εγγραφών`);
+  }
+
+  // ── STATS ──
+  async function loadStats() {
+    const today = new Date().toISOString().slice(0, 10);
+
+    // Today's check-ins
+    const { data: todayData } = await db
+      .from('attendance_log')
+      .select('site_id, sites(name), eidikotita, ergolabos, worker_id')
+      .eq('log_date', today);
+
+    const todayLog = todayData || [];
+
+    // Total workers
+    document.getElementById('sTotWorkers').textContent = workers.length;
+    document.getElementById('sTotCheckins').textContent = todayLog.length;
+    document.getElementById('sTotSites').textContent = sites.length;
+    document.getElementById('sTotCompanies').textContent = new Set(workers.map(w => w.ergolabos).filter(Boolean)).size;
+
+    // Per-site stats today
+    const siteStatsGrid = document.getElementById('siteStatsGrid');
+    if (!sites.length) { siteStatsGrid.innerHTML = '<div class="empty">Δεν βρέθηκαν εργοτάξια.</div>'; }
+    else {
+      siteStatsGrid.innerHTML = sites.map(s => {
+        const logs = todayLog.filter(r => r.site_id === s.id);
+        const trades = new Set(logs.map(r => r.eidikotita).filter(Boolean)).size;
+        const companies = new Set(logs.map(r => r.ergolabos).filter(Boolean)).size;
+        return `
+          <div class="site-stat-card">
+            <div class="site-stat-name">🏗 ${s.name}</div>
+            <div class="site-stat-row">Παρουσίες Σήμερα <span>${logs.length}</span></div>
+            <div class="site-stat-row">Ειδικότητες <span>${trades}</span></div>
+            <div class="site-stat-row">Εργολάβοι <span>${companies}</span></div>
+          </div>`;
+      }).join('');
+    }
+
+    // Last 7 days
+    const d7 = new Date(); d7.setDate(d7.getDate() - 6);
+    const d7str = d7.toISOString().slice(0, 10);
+    const { data: weekData } = await db
+      .from('attendance_log')
+      .select('log_date, site_id, sites(name)')
+      .gte('log_date', d7str)
+      .order('log_date');
+
+    const weekLog = weekData || [];
+    const byDate = {};
+    weekLog.forEach(r => {
+      if (!byDate[r.log_date]) byDate[r.log_date] = 0;
+      byDate[r.log_date]++;
+    });
+
+    const weekEl = document.getElementById('weekStats');
+    if (!Object.keys(byDate).length) {
+      weekEl.innerHTML = '<div class="empty">Δεν υπάρχουν δεδομένα τελευταίων 7 ημερών.</div>';
+    } else {
+      const maxVal = Math.max(...Object.values(byDate));
+      weekEl.innerHTML = Object.entries(byDate).reverse().map(([date, count]) => {
+        const pct = maxVal > 0 ? Math.round((count / maxVal) * 100) : 0;
+        return `<div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+          <div style="width:80px;flex-shrink:0;color:var(--gray4)">${date}</div>
+          <div style="flex:1;background:var(--gray3);border-radius:2px;height:20px;overflow:hidden;">
+            <div style="width:${pct}%;height:100%;background:var(--yellow);border-radius:2px;"></div>
+          </div>
+          <div style="width:36px;text-align:right;color:var(--yellow);font-weight:600">${count}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // ── START ──
+  setToday(); // pre-fill date filter with today
+  loadAll();
 </script>
 </body>
 </html>
