@@ -652,7 +652,9 @@
     const siteEl = document.getElementById('filterSite');
     const siteName = siteEl.options[siteEl.selectedIndex]?.text || 'all-sites';
     const from = document.getElementById('filterDateFrom').value || 'all';
-    a.download = `sitelog-${siteName}-${from}.csv`;
+    const to = document.getElementById('filterDateTo').value || 'all';
+    const dateRange = from === to ? from : `${from}_to_${to}`;
+    a.download = `sitelog-${siteName}-${dateRange}.csv`;
     a.click(); URL.revokeObjectURL(a.href);
     showToast(`✓ CSV εξαγωγή ${filtered.length} εγγραφών`);
   }
