@@ -192,6 +192,13 @@
   .log-name { font-weight: 600; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .log-sub  { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; color: var(--gray4); margin-top: 2px; }
   .log-time { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; color: var(--green-lt); flex-shrink: 0; }
+  .log-delete {
+    background: transparent; border: 1px solid var(--red); color: var(--red);
+    border-radius: 2px; padding: 4px 8px; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .log-delete:hover { background: var(--red); color: #fff; }
 
   .badge {
     display: inline-block; padding: 1px 7px; border-radius: 2px;
@@ -762,6 +769,7 @@
           </div>
         </div>
         <div class="log-time">${e.timeIn}</div>
+        <button class="log-delete" onclick="deleteEntry(${e.id})" title="Διαγραφή εγγραφής">✕</button>
       </div>
     `).join('');
   }
@@ -787,7 +795,8 @@
   // ── CLEAR LOG ──
   async function clearLog() {
     if (todayLog.length === 0) return;
-    if (!confirm(`Καθαρισμός ${todayLog.length} παρουσιών από τη βάση;`)) return;
+    if (!confirm(`ΠΡΟΣΟΧΗ: Θα διαγραφούν ΟΛΕΣ οι ${todayLog.length} παρουσίες από τη βάση δεδομένων.\n\nΕίστε σίγουροι ότι θέλετε να συνεχίσετε;`)) return;
+    if (!confirm('ΕΠΑΛΗΘΕΥΣΗ: Θέλετε σίγουρα να διαγράψετε όλες τις εγγραφές;')) return;
     const todayStr = new Date().toISOString().slice(0, 10);
     const { error } = await db.from('attendance_log')
       .delete()
@@ -797,6 +806,27 @@
     todayLog = [];
     renderLog();
     showToast('Ημερολόγιο καθαρίστηκε', '#888');
+  }
+
+  // ── DELETE SINGLE ENTRY ──
+  async function deleteEntry(id) {
+    const entry = todayLog.find(e => e.id === id);
+    if (!entry) return;
+    const name = `${entry.eponimo || ''} ${entry.onoma || ''}`.trim() || 'Άγνωστος';
+    if (!confirm(`Διαγραφή της εγγραφής:\n\n${name}\nΏρα εισόδου: ${entry.timeIn}\n\nΕίστε σίγουροι;`)) return;
+    if (!confirm('ΕΠΑΛΗΘΕΥΣΗ: Θέλετε σίγουρα να διαγράψετε αυτή την εγγραφή;')) return;
+    
+    const { error } = await db.from('attendance_log')
+      .delete()
+      .eq('id', id);
+    if (error) { 
+      showToast('⚠ Σφάλμα διαγραφής', '#e8600a'); 
+      console.error(error);
+      return; 
+    }
+    todayLog = todayLog.filter(e => e.id !== id);
+    renderLog();
+    showToast(`✓ Η εγγραφή διαγράφηκε`, '#23a045');
   }
 
   // ── START ──
