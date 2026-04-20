@@ -593,7 +593,29 @@
 
     const { data, error } = await query.limit(500);
     if (error) { showToast('⚠ Σφάλμα φόρτωσης παρουσιών', '#e8600a'); return; }
-    attRecords = data || [];
+    
+    // Φορτώνουμε τους workers για να κάνουμε join τα στοιχεία τους
+    const { data: workersData } = await db.from('workers').select('id, eponimo, onoma, eidikotita, ergolabos, default_phase, is_multi_phase');
+    const workersMap = {};
+    if (workersData) {
+      workersData.forEach(w => {
+        workersMap[w.id] = w;
+      });
+    }
+    
+    // Ενώνουμε τα δεδομένα των παρουσιών με τα στοιχεία των workers
+    attRecords = (data || []).map(r => {
+      const worker = workersMap[r.worker_id];
+      return {
+        ...r,
+        eponimo: worker?.eponimo || '—',
+        onoma: worker?.onoma || '—',
+        eidikotita: worker?.eidikotita || '—',
+        ergolabos: worker?.ergolabos || '—',
+        fasi: r.fasi || worker?.default_phase || '—'
+      };
+    });
+    
     renderAttendance();
   }
 
