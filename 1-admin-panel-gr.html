@@ -623,23 +623,44 @@
   }
 
   function renderAttendance() {
-    const q = (document.getElementById('filterWorker')?.value || '').toLowerCase();
-    const filtered = attRecords.filter(r => {
-      // Search across joined worker fields
-      const w = r.workers || {};
-      const searchStr = [
-        w.eponimo, w.onoma, w.eidikotita, w.ergolabos, r.worker_id, r.fasi
-      ].join(' ').toLowerCase();
-      return searchStr.includes(q);
-    });
+  const q = (document.getElementById('filterWorker')?.value || '').toLowerCase();
+  const filtered = attRecords.filter(r => {
+    // Χειρισμός αν το workers είναι array ή object
+    const w = Array.isArray(r.workers) ? r.workers[0] : (r.workers || {});
+    const searchStr = [
+      w.eponimo, w.onoma, w.eidikotita, w.ergolabos, r.worker_id, r.fasi
+    ].join(' ').toLowerCase();
+    return searchStr.includes(q);
+  });
 
-    document.getElementById('attCount').textContent = `${filtered.length} εγγραφές`;
+  document.getElementById('attCount').textContent = `${filtered.length} εγγραφές`;
 
-    if (filtered.length === 0) {
-      document.getElementById('attBody').innerHTML =
-        '<tr><td colspan="12"><div class="empty">Δεν βρέθηκαν παρουσίες.</div></td></tr>';
-      return;
-    }
+  if (filtered.length === 0) {
+    document.getElementById('attBody').innerHTML =
+      '<tr><td colspan="12"><div class="empty">Δεν βρέθηκαν παρουσίες.</div></td></tr>';
+    return;
+  }
+
+  document.getElementById('attBody').innerHTML = filtered.map((r, i) => {
+    // Εδώ είναι η κρίσιμη αλλαγή για το rendering
+    const w = Array.isArray(r.workers) ? r.workers[0] : (r.workers || {});
+    
+    return `<tr>
+      <td class="td-mono">${i + 1}</td>
+      <td><span class="badge badge-orange">${r.sites?.name || '—'}</span></td>
+      <td class="td-mono">${r.log_date || '—'}</td>
+      <td class="td-time">${r.time_in || '—'}</td>
+      <td style="font-weight:600">${w.eponimo || '—'}</td>
+      <td>${w.onoma || '—'}</td>
+      <td class="td-mono" style="font-size:0.72rem;color:var(--gray4)">${w.patronimo || '—'}</td>
+      <td><span class="badge badge-yellow">${w.eidikotita || '—'}</span></td>
+      <td class="td-mono" style="font-size:0.7rem">${r.fasi || '—'}</td>
+      <td class="td-mono">${w.ergolabos || '—'}</td>
+      <td class="td-mono" style="font-size:0.7rem">${w.ama || '—'}</td>
+      <td class="td-mono" style="color:var(--gray4)">${r.worker_id || '—'}</td>
+    </tr>`;
+  }).join('');
+}
 
     document.getElementById('attBody').innerHTML = filtered.map((r, i) => {
       const w = r.workers || {};
@@ -668,32 +689,33 @@
     loadAttendance();
   }
 
-  function exportAttCSV() {
-    const q = (document.getElementById('filterWorker')?.value || '').toLowerCase();
-    const filtered = attRecords.filter(r => {
-      const w = r.workers || {};
-      return [w.eponimo, w.onoma, w.eidikotita, w.ergolabos, r.worker_id, r.fasi].join(' ').toLowerCase().includes(q);
-    });
-    if (!filtered.length) { showToast('Δεν υπάρχουν εγγραφές', '#e8600a'); return; }
+function exportAttCSV() {
+  const q = (document.getElementById('filterWorker')?.value || '').toLowerCase();
+  const filtered = attRecords.filter(r => {
+    const w = Array.isArray(r.workers) ? r.workers[0] : (r.workers || {});
+    return [w.eponimo, w.onoma, w.eidikotita, w.ergolabos, r.worker_id, r.fasi].join(' ').toLowerCase().includes(q);
+  });
 
-    const headers = ['#','Εργοτάξιο','Ημερομηνία','Ώρα Εισόδου','Επώνυμο','Όνομα','Πατρώνυμο','Ειδικότητα','Φάση (check-in)','Εργολάβος','Α.Μ.Α.','Worker ID'];
-    const rows = filtered.map((r, i) => {
-      const w = r.workers || {};
-      return [
-        i+1,
-        r.sites?.name || '',
-        r.log_date || '',
-        r.time_in || '',
-        w.eponimo || '',
-        w.onoma || '',
-        w.patronimo || '',
-        w.eidikotita || '',
-        r.fasi || '',
-        w.ergolabos || '',
-        w.ama || '',
-        r.worker_id || ''
-      ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
-    });
+  if (!filtered.length) { showToast('Δεν υπάρχουν εγγραφές', '#e8600a'); return; }
+
+  const headers = ['#','Εργοτάξιο','Ημερομηνία','Ώρα Εισόδου','Επώνυμο','Όνομα','Πατρώνυμο','Ειδικότητα','Φάση (check-in)','Εργολάβος','Α.Μ.Α.','Worker ID'];
+  const rows = filtered.map((r, i) => {
+    const w = Array.isArray(r.workers) ? r.workers[0] : (r.workers || {});
+    return [
+      i+1,
+      r.sites?.name || '',
+      r.log_date || '',
+      r.time_in || '',
+      w.eponimo || '',
+      w.onoma || '',
+      w.patronimo || '',
+      w.eidikotita || '',
+      r.fasi || '',
+      w.ergolabos || '',
+      w.ama || '',
+      r.worker_id || ''
+    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+  });
     const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
