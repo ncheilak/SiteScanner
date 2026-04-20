@@ -562,7 +562,10 @@
       db_id:        r.id,
       fasi:         r.fasi || ''
     }));
-    renderLog();
+    // Only render log if we're on the log tab or modal is closed
+    if (document.getElementById('logView').classList.contains('active') || !document.getElementById('siteModal').classList.contains('hidden')) {
+      renderLog();
+    }
   }
 
   // ── SAVE CHECK-IN to Supabase ──
