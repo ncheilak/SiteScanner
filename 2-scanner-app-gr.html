@@ -436,28 +436,58 @@
     today.toLocaleDateString('el-GR', { weekday:'short', month:'short', day:'numeric' });
 
   async function init() {
+    // Restore site from localStorage if exists
+    const savedSite = localStorage.getItem('sitelog_current_site');
+    if (savedSite) {
+      try {
+        currentSite = JSON.parse(savedSite);
+        document.getElementById('sitePill').textContent = currentSite.name;
+      } catch(e) {
+        localStorage.removeItem('sitelog_current_site');
+      }
+    }
     await loadSites();
-    showSiteModal();
+    // Only show modal if no site is selected or user wants to change
+    if (!currentSite) {
+      showSiteModal();
+    } else {
+      // Load data for the restored site
+      await loadWorkers();
+      await loadTodayLog();
+    }
   }
 
   // ── SITES ──
   async function loadSites() {
     const { data, error } = await db.from('sites').select('*').order('id');
-    if (error) { console.error(error); return; }
+    if (error) { 
+      console.error(error); 
+      document.getElementById('siteButtons').innerHTML = 
+        '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:0.75rem;color:var(--red);padding:20px 0;text-align:center;">⚠ Σφάλμα φόρτωσης εργοταξίων</div>' +
+        '<button class="btn btn-yellow" onclick="loadSites()" style="width:100%;margin-top:10px;">Δοκιμή ξανά</button>';
+      return; 
+    }
     sites = data || [];
     renderSiteButtons();
   }
 
   function renderSiteButtons() {
     const icons = ['🏗', '🏢', '🏛'];
+    if (sites.length === 0) {
+      document.getElementById('siteButtons').innerHTML = 
+        '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:0.75rem;color:var(--gray4);padding:20px 0;text-align:center;">Δεν βρέθηκαν εργοτάξια</div>';
+      return;
+    }
     document.getElementById('siteButtons').innerHTML = sites.map((s, i) => `
-      <button class="site-btn" onclick="selectSite(${s.id}, '${s.name}')">
+      <button class="site-btn" onclick="selectSite(${s.id}, '${s.name.replace(/'/g, "\\'")}')">
         <span class="site-icon">${icons[i] || '🏗'}</span>${s.name}
       </button>
     `).join('');
   }
 
   function showSiteModal() {
+    // Refresh site buttons in case sites changed
+    renderSiteButtons();
     document.getElementById('siteModal').classList.remove('hidden');
   }
 
@@ -465,6 +495,8 @@
     currentSite = { id, name };
     document.getElementById('siteModal').classList.add('hidden');
     document.getElementById('sitePill').textContent = name;
+    // Save to localStorage for persistence
+    localStorage.setItem('sitelog_current_site', JSON.stringify({ id, name }));
     await loadWorkers();
     await loadTodayLog();
   }
