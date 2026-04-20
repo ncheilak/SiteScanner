@@ -1,826 +1,837 @@
 <!DOCTYPE html>
 <html lang="el">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SiteLog Scanner v1.0</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
-    <style>
-        :root {
-            --primary: #2563eb;
-            --primary-dark: #1d4ed8;
-            --secondary: #64748b;
-            --success: #22c55e;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --light: #f8fafc;
-            --dark: #1e293b;
-            --border: #e2e8f0;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>SiteLog — Σαρωτής QR</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/@zxing/library@0.19.1/umd/index.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --black: #0a0a0a;
+    --yellow: #f5c800;
+    --yellow-dk: #c9a200;
+    --orange: #e8600a;
+    --white: #f4efe6;
+    --gray: #1a1a1a;
+    --gray2: #252525;
+    --gray3: #333;
+    --gray4: #555;
+    --green: #23a045;
+    --green-lt: #2ec25a;
+    --red: #d93b3b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--black);
+    color: var(--white);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
+  header {
+    background: var(--yellow);
+    color: var(--black);
+    padding: 12px 18px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--orange);
+    flex-shrink: 0;
+  }
+  .logo { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; letter-spacing: 2px; }
+  .logo em { color: var(--orange); font-style: normal; }
+  .header-right { display: flex; gap: 8px; align-items: center; }
+  .date-pill {
+    background: var(--black);
+    color: var(--yellow);
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 2px;
+    text-transform: uppercase;
+  }
+  .site-pill {
+    background: var(--orange);
+    color: #fff;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    cursor: pointer;
+  }
 
-        body {
-            background-color: #f1f5f9;
-            color: var(--dark);
-            line-height: 1.6;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-        }
+  /* TABS */
+  .tabs {
+    display: flex;
+    background: var(--gray);
+    border-bottom: 2px solid var(--gray3);
+    flex-shrink: 0;
+  }
+  .tab {
+    flex: 1;
+    padding: 10px;
+    text-align: center;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1rem;
+    letter-spacing: 1.5px;
+    color: var(--gray4);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .tab.active { color: var(--yellow); border-bottom-color: var(--yellow); }
 
-        header {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-            padding: 1rem;
-            text-align: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
+  .view { display: none; flex: 1; overflow-y: auto; }
+  .view.active { display: flex; flex-direction: column; }
 
-        header h1 {
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
+  #scanView { align-items: stretch; }
 
-        .container {
-            max-width: 800px;
-            margin: 1rem auto;
-            padding: 0 1rem;
-            flex: 1;
-            width: 100%;
-        }
+  .cam-wrap {
+    position: relative;
+    background: #000;
+    width: 100%;
+    aspect-ratio: 1;
+    max-height: 55vw;
+    overflow: hidden;
+    flex-shrink: 0;
+  }
+  #camVideo { width: 100%; height: 100%; object-fit: cover; display: block; }
+  #camCanvas { display: none; }
 
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 1.5rem;
-            margin-bottom: 1.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-        }
+  .scan-overlay {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    pointer-events: none;
+  }
+  .scan-frame {
+    width: 55%; aspect-ratio: 1;
+    border: 3px solid var(--yellow); border-radius: 4px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+    position: relative;
+  }
+  .scan-line {
+    position: absolute; left: 4px; right: 4px;
+    height: 2px; background: var(--yellow); opacity: 0.8;
+    animation: scanline 2s linear infinite;
+  }
+  @keyframes scanline { 0% { top: 8px; } 100% { top: calc(100% - 8px); } }
 
-        .status-bar {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: #e0f2fe;
-            padding: 0.75rem 1rem;
-            border-radius: 8px;
-            margin-bottom: 1.5rem;
-            border-left: 4px solid var(--primary);
-        }
+  .scan-hint {
+    text-align: center; padding: 10px 16px 6px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem;
+    color: var(--gray4); flex-shrink: 0;
+  }
 
-        .site-info {
-            font-weight: 600;
-            color: var(--primary-dark);
-        }
+  .result-flash {
+    margin: 0 16px 10px; border-radius: 4px; padding: 14px 16px;
+    display: none; align-items: center; gap: 14px; flex-shrink: 0;
+  }
+  .result-flash.success { display: flex; background: rgba(35,160,69,0.15); border: 1px solid rgba(35,160,69,0.4); }
+  .result-flash.error   { display: flex; background: rgba(217,59,59,0.15); border: 1px solid rgba(217,59,59,0.4); }
+  .result-flash.dupe    { display: flex; background: rgba(232,96,10,0.15); border: 1px solid rgba(232,96,10,0.4); }
+  .flash-icon { font-size: 2rem; flex-shrink: 0; }
+  .flash-name { font-family: 'Bebas Neue', sans-serif; font-size: 1.3rem; letter-spacing: 1px; }
+  .flash-meta { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: #aaa; }
+  .flash-time { font-family: 'IBM Plex Mono', monospace; font-size: 0.78rem; margin-top: 4px; }
 
-        .scanner-area {
-            text-align: center;
-            padding: 2rem 0;
-        }
+  .load-bar {
+    background: var(--gray2); border-top: 1px solid var(--gray3);
+    padding: 10px 16px; display: flex; gap: 8px;
+    align-items: center; flex-wrap: wrap; flex-shrink: 0;
+  }
+  .db-status {
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.68rem;
+    color: var(--gray4); flex: 1; min-width: 100px;
+  }
+  .db-status.loaded { color: var(--green-lt); }
 
-        #reader {
-            width: 100%;
-            max-width: 500px;
-            margin: 0 auto;
-            border-radius: 8px;
-            overflow: hidden;
-            background: #000;
-        }
+  .cam-controls {
+    display: flex; gap: 8px; padding: 8px 16px;
+    background: var(--gray2); flex-shrink: 0;
+  }
 
-        .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-            margin-top: 1.5rem;
-        }
+  #logView { padding: 0; }
 
-        button {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 1rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-        }
+  .log-topbar {
+    display: flex; gap: 8px; padding: 10px 14px;
+    background: var(--gray2); border-bottom: 1px solid var(--gray3);
+    align-items: center; flex-wrap: wrap; flex-shrink: 0;
+  }
+  .log-topbar input {
+    flex: 1; min-width: 120px; background: var(--black);
+    border: 1px solid var(--gray3); border-radius: 2px;
+    color: var(--white); font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.85rem; padding: 7px 10px; outline: none;
+  }
+  .log-topbar input:focus { border-color: var(--yellow); }
 
-        .btn-primary {
-            background-color: var(--primary);
-            color: white;
-        }
+  .stats-strip {
+    display: grid; grid-template-columns: repeat(3,1fr);
+    gap: 1px; background: var(--gray3); flex-shrink: 0;
+  }
+  .strip-stat { background: var(--gray2); text-align: center; padding: 8px 4px; }
+  .strip-num { font-family: 'Bebas Neue', sans-serif; font-size: 1.6rem; color: var(--yellow); line-height: 1; }
+  .strip-lbl { font-family: 'IBM Plex Mono', monospace; font-size: 0.55rem; color: var(--gray4); text-transform: uppercase; }
 
-        .btn-primary:hover {
-            background-color: var(--primary-dark);
-        }
+  .log-list { flex: 1; overflow-y: auto; }
+  .log-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 14px; border-bottom: 1px solid var(--gray2);
+    transition: background 0.1s;
+  }
+  .log-item:hover { background: rgba(245,200,0,0.03); }
+  .log-num { font-family: 'IBM Plex Mono', monospace; font-size: 0.7rem; color: var(--gray4); width: 22px; text-align: right; flex-shrink: 0; }
+  .log-info { flex: 1; min-width: 0; }
+  .log-name { font-weight: 600; font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .log-sub  { font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem; color: var(--gray4); margin-top: 2px; }
+  .log-time { font-family: 'IBM Plex Mono', monospace; font-size: 0.72rem; color: var(--green-lt); flex-shrink: 0; }
+  .log-delete {
+    background: transparent; border: 1px solid var(--red); color: var(--red);
+    border-radius: 2px; padding: 4px 8px; cursor: pointer;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.65rem;
+    transition: all 0.15s; flex-shrink: 0;
+  }
+  .log-delete:hover { background: var(--red); color: #fff; }
 
-        .btn-secondary {
-            background-color: var(--secondary);
-            color: white;
-        }
+  .badge {
+    display: inline-block; padding: 1px 7px; border-radius: 2px;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem;
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; flex-shrink: 0;
+  }
+  .badge-yellow { background: rgba(245,200,0,.12); color: var(--yellow); border: 1px solid rgba(245,200,0,.25); }
+  .empty-log { text-align: center; padding: 50px 20px; color: var(--gray4); font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem; }
 
-        .btn-secondary:hover {
-            background-color: #475569;
-        }
+  .export-bar {
+    padding: 10px 14px; background: var(--gray2);
+    border-top: 1px solid var(--gray3); display: flex; gap: 8px; flex-shrink: 0;
+  }
 
-        .btn-danger {
-            background-color: var(--danger);
-            color: white;
-        }
+  .btn {
+    border: none; border-radius: 2px; cursor: pointer;
+    font-family: 'Bebas Neue', sans-serif; letter-spacing: 1.5px;
+    padding: 8px 14px; font-size: 0.9rem;
+    transition: opacity 0.15s, transform 0.1s; white-space: nowrap;
+  }
+  .btn:active { transform: scale(0.97); }
+  .btn-yellow { background: var(--yellow); color: var(--black); }
+  .btn-yellow:hover { background: var(--yellow-dk); }
+  .btn-orange { background: var(--orange); color: #fff; }
+  .btn-outline { background: transparent; border: 1px solid var(--gray3); color: var(--white); font-size: 0.8rem; }
+  .btn-outline:hover { border-color: var(--yellow); color: var(--yellow); }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-green { background: var(--green); color: #fff; }
 
-        .btn-danger:hover {
-            background-color: #dc2626;
-        }
+  .toast {
+    position: fixed; bottom: 16px; right: 16px;
+    background: var(--green); color: #fff;
+    font-family: 'IBM Plex Mono', monospace; font-size: 0.75rem;
+    padding: 9px 16px; border-radius: 3px;
+    opacity: 0; transform: translateY(8px);
+    transition: opacity 0.2s, transform 0.2s;
+    pointer-events: none; z-index: 999;
+    max-width: calc(100vw - 32px);
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
 
-        .manual-entry {
-            margin-top: 1.5rem;
-            border-top: 1px solid var(--border);
-            padding-top: 1.5rem;
-        }
+  .manual-panel {
+    background: var(--gray2); border-top: 1px solid var(--gray3);
+    padding: 12px 16px; display: none; flex-shrink: 0;
+  }
+  .manual-panel.open { display: block; }
+  .manual-row { display: flex; gap: 8px; align-items: center; }
+  .manual-row input {
+    flex: 1; background: var(--black); border: 1px solid var(--gray3);
+    border-radius: 2px; color: var(--white);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 0.85rem; padding: 7px 10px; outline: none;
+  }
+  .manual-row input:focus { border-color: var(--yellow); }
 
-        .input-group {
-            display: flex;
-            gap: 0.5rem;
-            margin-top: 1rem;
-        }
+  @media (min-width: 600px) { .cam-wrap { max-height: 340px; } }
 
-        input[type="text"], input[type="number"] {
-            flex: 1;
-            padding: 0.75rem;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 1rem;
-        }
+  /* ── SITE SELECTION MODAL ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 500; padding: 20px;
+  }
+  .modal-overlay.hidden { display: none; }
+  .modal-box {
+    background: var(--gray);
+    border: 1px solid var(--gray3);
+    border-top: 4px solid var(--yellow);
+    border-radius: 4px;
+    padding: 28px 24px;
+    width: 100%; max-width: 360px;
+  }
+  .modal-logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.8rem; letter-spacing: 3px;
+    color: var(--white); margin-bottom: 4px;
+  }
+  .modal-logo em { color: var(--orange); font-style: normal; }
+  .modal-sub {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem; color: var(--gray4);
+    text-transform: uppercase; letter-spacing: 1.5px;
+    margin-bottom: 24px;
+  }
+  .modal-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.62rem; font-weight: 600;
+    color: var(--yellow); text-transform: uppercase;
+    letter-spacing: 1.5px; margin-bottom: 10px;
+  }
+  .site-btn {
+    display: block; width: 100%; margin-bottom: 8px;
+    padding: 14px 18px; border: 1px solid var(--gray3);
+    border-radius: 2px; background: var(--gray2);
+    color: var(--white); cursor: pointer;
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 1.1rem; letter-spacing: 2px;
+    text-align: left; transition: border-color 0.15s, background 0.15s;
+  }
+  .site-btn:hover { border-color: var(--yellow); background: var(--black); }
+  .site-btn .site-icon { margin-right: 10px; }
 
-        .log-list {
-            list-style: none;
-        }
-
-        .log-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1rem;
-            border-bottom: 1px solid var(--border);
-            animation: slideIn 0.3s ease-out;
-        }
-
-        .log-item:last-child {
-            border-bottom: none;
-        }
-
-        .log-info {
-            flex: 1;
-        }
-
-        .log-name {
-            font-weight: 600;
-            font-size: 1.1rem;
-            color: var(--dark);
-        }
-
-        .log-details {
-            font-size: 0.9rem;
-            color: var(--secondary);
-            margin-top: 0.25rem;
-        }
-
-        .log-time {
-            font-weight: 600;
-            color: var(--primary);
-            font-size: 0.9rem;
-        }
-
-        .delete-btn {
-            background: none;
-            border: none;
-            color: var(--danger);
-            cursor: pointer;
-            font-size: 1.2rem;
-            padding: 0.5rem;
-            margin-left: 1rem;
-            opacity: 0.7;
-            transition: opacity 0.2s;
-        }
-
-        .delete-btn:hover {
-            opacity: 1;
-            background: #fee2e2;
-            border-radius: 50%;
-        }
-
-        @keyframes slideIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
-            border-radius: 8px;
-            color: white;
-            font-weight: 600;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-            transform: translateX(120%);
-            transition: transform 0.3s ease-out;
-            z-index: 1000;
-        }
-
-        .notification.show {
-            transform: translateX(0);
-        }
-
-        .notification.success {
-            background-color: var(--success);
-        }
-
-        .notification.error {
-            background-color: var(--danger);
-        }
-
-        /* Modal Styles */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-        }
-
-        .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 12px;
-            width: 90%;
-            max-width: 400px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
-        }
-
-        .modal-title {
-            font-size: 1.25rem;
-            font-weight: 700;
-            margin-bottom: 1rem;
-            color: var(--dark);
-        }
-
-        .modal-body {
-            margin-bottom: 1.5rem;
-        }
-
-        .modal-actions {
-            display: flex;
-            justify-content: flex-end;
-            gap: 0.5rem;
-        }
-
-        select {
-            width: 100%;
-            padding: 0.75rem;
-            border: 1px solid var(--border);
-            border-radius: 8px;
-            font-size: 1rem;
-            background-color: white;
-            margin-top: 0.5rem;
-        }
-
-        @media (max-width: 600px) {
-            .controls {
-                grid-template-columns: 1fr;
-            }
-            
-            header h1 {
-                font-size: 1.25rem;
-            }
-        }
-    </style>
+  /* Loading spinner */
+  .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid var(--gray3); border-top-color: var(--yellow);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+    vertical-align: middle; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
 </head>
 <body>
-    <header>
-        <h1>🏗️ SiteLog Scanner</h1>
-        <p>Καταγραφή Παρουσίας Εργαζομένων</p>
-    </header>
 
-    <div class="container">
-        <div class="status-bar">
-            <div class="site-info" id="currentSite">Επιλέξτε Εργοτάξιο...</div>
-            <button class="btn-secondary" style="padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="changeSite()">
-                🔄 Αλλαγή
-            </button>
-        </div>
-
-        <div class="card scanner-area">
-            <div id="reader"></div>
-            <div class="controls">
-                <button class="btn-primary" id="startScanBtn" onclick="startScanner()">
-                    📷 Έναρξη Σάρωσης
-                </button>
-                <button class="btn-secondary" id="stopScanBtn" onclick="stopScanner()" style="display: none;">
-                    ⏹️ Παύση
-                </button>
-            </div>
-
-            <div class="manual-entry">
-                <h3>Χειροκίνητη Εισαγωγή</h3>
-                <div class="input-group">
-                    <input type="text" id="manualId" placeholder="Εισάγετε ID Εργαζόμενου">
-                    <button class="btn-primary" onclick="processManualEntry()">Καταχώρηση</button>
-                </div>
-            </div>
-        </div>
-
-        <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                <h2>Σημερινές Παρουσίες</h2>
-                <button class="btn-danger" style="padding: 0.5rem 1rem; font-size: 0.9rem;" onclick="clearTodayLogs()">
-                    🗑️ Καθαρισμός Όλων
-                </button>
-            </div>
-            <ul class="log-list" id="todayLogs">
-                <li style="text-align: center; color: var(--secondary); padding: 2rem;">Φόρτωση δεδομένων...</li>
-            </ul>
-        </div>
+<!-- ── SITE SELECTION MODAL ── -->
+<div class="modal-overlay" id="siteModal">
+  <div class="modal-box">
+    <div class="modal-logo">Site<em>Log</em></div>
+    <div class="modal-sub">Σύστημα Παρουσίας Εργοταξίου</div>
+    <div class="modal-label">Επιλέξτε Εργοτάξιο</div>
+    <div id="siteButtons">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:0.75rem;color:var(--gray4);padding:20px 0;text-align:center;">
+        <span class="spinner"></span> Φόρτωση…
+      </div>
     </div>
+  </div>
+</div>
 
-    <!-- Site Selection Modal -->
-    <div class="modal-overlay" id="siteModal">
-        <div class="modal-content">
-            <div class="modal-title">Επιλογή Εργοταξίου</div>
-            <div class="modal-body">
-                <p style="margin-bottom: 1rem;">Παρακαλώ επιλέξτε το τρέχον εργοτάξιο για καταγραφή:</p>
-                <select id="siteSelect">
-                    <option value="">-- Επιλέξτε Εργοτάξιο --</option>
-                </select>
-            </div>
-            <div class="modal-actions">
-                <button class="btn-primary" onclick="confirmSiteSelection()">Επιβεβαίωση</button>
-            </div>
-        </div>
+<header>
+  <div class="logo">Site<em>Log</em> <span style="font-size:0.85rem;opacity:.6;letter-spacing:1px">ΣΑΡΩΤΗΣ</span></div>
+  <div class="header-right">
+    <div class="site-pill" id="sitePill" onclick="showSiteModal()" title="Αλλαγή εργοταξίου">—</div>
+    <div class="date-pill" id="datePill"></div>
+  </div>
+</header>
+
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('scan')">📷 Σάρωση</div>
+  <div class="tab" onclick="switchTab('log')">📋 Σημερινές Παρουσίες</div>
+</div>
+
+<!-- SCAN VIEW -->
+<div class="view active" id="scanView">
+  <div class="cam-wrap">
+    <video id="camVideo" playsinline autoplay muted></video>
+    <canvas id="camCanvas"></canvas>
+    <div class="scan-overlay">
+      <div class="scan-frame"><div class="scan-line"></div></div>
     </div>
+  </div>
 
-    <!-- Phase Selection Modal -->
-    <div class="modal-overlay" id="phaseModal">
-        <div class="modal-content">
-            <div class="modal-title">Επιλογή Φάσης Κατασκευής</div>
-            <div class="modal-body">
-                <p id="phaseWorkerName" style="margin-bottom: 0.5rem; font-weight: 600;"></p>
-                <p style="margin-bottom: 1rem; color: var(--secondary);">Ο εργαζόμενος μπορεί να απασχοληθεί σε πολλαπλές φάσεις. Επιλέξτε την τρέχουσα:</p>
-                <select id="phaseSelect">
-                    <option value="">-- Επιλέξτε Φάση --</option>
-                    <option value="01: Εκσκαφές & Οικοδομικός Σκελετός">01: Εκσκαφές & Οικοδομικός Σκελετός</option>
-                    <option value="02: Τοιχοποιίες">02: Τοιχοποιίες</option>
-                    <option value="03: Επιχρίσματα (Σοβατίσματα)">03: Επιχρίσματα (Σοβατίσματα)</option>
-                    <option value="04: Δάπεδα - Επενδύσεις">04: Δάπεδα - Επενδύσεις</option>
-                    <option value="05: Διάφορες Εργασίες">05: Διάφορες Εργασίες</option>
-                    <option value="06: Εργασίες Εγκαταστάσεων">06: Εργασίες Εγκαταστάσεων</option>
-                </select>
-            </div>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="closePhaseModal()">Ακύρωση</button>
-                <button class="btn-primary" onclick="confirmPhaseSelection()">Αποθήκευση</button>
-            </div>
-        </div>
+  <div class="scan-hint" id="scanHint">Πατήστε Έναρξη Κάμερας για σάρωση</div>
+
+  <div class="result-flash" id="resultFlash">
+    <div class="flash-icon" id="flashIcon"></div>
+    <div>
+      <div class="flash-name" id="flashName"></div>
+      <div class="flash-meta" id="flashMeta"></div>
+      <div class="flash-time" id="flashTime"></div>
     </div>
+  </div>
 
-    <!-- Confirmation Modal -->
-    <div class="modal-overlay" id="confirmModal">
-        <div class="modal-content">
-            <div class="modal-title" id="confirmTitle">Επιβεβαίωση</div>
-            <div class="modal-body" id="confirmMessage"></div>
-            <div class="modal-actions">
-                <button class="btn-secondary" onclick="closeConfirmModal()">Ακύρωση</button>
-                <button class="btn-danger" id="confirmActionBtn">Επιβεβαίωση</button>
-            </div>
-        </div>
+  <div class="cam-controls">
+    <button class="btn btn-yellow" id="camBtn" onclick="toggleCamera()">▶ Έναρξη Κάμερας</button>
+    <button class="btn btn-outline" onclick="toggleManual()">✏ Χειροκίνητη Εισαγωγή</button>
+  </div>
+
+  <div class="manual-panel" id="manualPanel">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:var(--yellow);font-weight:600;margin-bottom:8px;text-transform:uppercase;letter-spacing:1px;">Manual Check-In</div>
+    <div class="manual-row" style="margin-bottom:8px;">
+      <input type="text" id="manualSearch" placeholder="Αναζήτηση ονόματος ή Α.Μ.Α.…" oninput="searchManual()">
     </div>
+    <div id="manualResults"></div>
+  </div>
 
-    <div class="notification" id="notification"></div>
+  <div class="load-bar">
+    <div class="db-status" id="dbStatus">Φόρτωση εργαζομένων…</div>
+  </div>
+</div>
 
-    <script>
-        // --- CONFIGURATION ---
-        const SUPABASE_URL = 'YOUR_SUPABASE_URL';
-        const SUPABASE_KEY = 'YOUR_SUPABASE_KEY';
-        
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+<!-- LOG VIEW -->
+<div class="view" id="logView">
+  <div class="stats-strip">
+    <div class="strip-stat">
+      <div class="strip-num" id="logTotal">0</div>
+      <div class="strip-lbl">On Site</div>
+    </div>
+    <div class="strip-stat">
+      <div class="strip-num" id="logTrades" style="color:var(--orange)">0</div>
+      <div class="strip-lbl">Trades</div>
+    </div>
+    <div class="strip-stat">
+      <div class="strip-num" id="logCompanies" style="color:#7ab4ff">0</div>
+      <div class="strip-lbl">Companies</div>
+    </div>
+  </div>
 
-        let html5QrCode;
-        let isScanning = false;
-        let currentSiteId = null;
-        let currentSiteName = '';
-        let pendingEntry = null; // For storing entry data while waiting for phase selection
+  <div class="log-topbar">
+    <input type="text" id="logSearch" placeholder="🔍 Φιλτράρισμα…" oninput="renderLog()">
+  </div>
 
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
-            loadSites();
-            
-            // Check if site is already selected in session storage
-            const savedSite = sessionStorage.getItem('selectedSite');
-            if (savedSite) {
-                const siteData = JSON.parse(savedSite);
-                currentSiteId = siteData.id;
-                currentSiteName = siteData.name;
-                updateSiteDisplay();
-                loadTodayLogs();
-            } else {
-                showSiteModal();
+  <div class="log-list" id="logList">
+    <div class="empty-log">Δεν υπάρχουν παρουσίες ακόμα.<br>Σαρώστε badges στην καρτέλα Σάρωσης.</div>
+  </div>
+
+  <div class="export-bar">
+    <button class="btn btn-orange" onclick="exportCSV()" style="flex:1">⬇ Εξαγωγή CSV</button>
+    <button class="btn btn-red btn-outline" onclick="clearLog()">✕ Καθαρισμός</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── SUPABASE CONFIG ──
+  const SUPABASE_URL = 'https://nlrkhehgkfwdkxuknwwo.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_ybrvNyLSgHkqcn3TlLJZQQ_uyj9_aBI';
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  // ── STATE ──
+  let workerDB     = [];
+  let todayLog     = [];
+  let codeReader   = null;
+  let scanning     = false;
+  let lastScan     = '';
+  let lastScanTime = 0;
+  let currentSite  = null; // { id, name }
+  let sites        = [];
+
+  // ── INIT ──
+  const today = new Date();
+  document.getElementById('datePill').textContent =
+    today.toLocaleDateString('el-GR', { weekday:'short', month:'short', day:'numeric' });
+
+  async function init() {
+    await loadSites();
+    showSiteModal();
+  }
+
+  // ── SITES ──
+  async function loadSites() {
+    const { data, error } = await db.from('sites').select('*').order('id');
+    if (error) { console.error(error); return; }
+    sites = data || [];
+    renderSiteButtons();
+  }
+
+  function renderSiteButtons() {
+    const icons = ['🏗', '🏢', '🏛'];
+    document.getElementById('siteButtons').innerHTML = sites.map((s, i) => `
+      <button class="site-btn" onclick="selectSite(${s.id}, '${s.name}')">
+        <span class="site-icon">${icons[i] || '🏗'}</span>${s.name}
+      </button>
+    `).join('');
+  }
+
+  function showSiteModal() {
+    document.getElementById('siteModal').classList.remove('hidden');
+  }
+
+  async function selectSite(id, name) {
+    currentSite = { id, name };
+    document.getElementById('siteModal').classList.add('hidden');
+    document.getElementById('sitePill').textContent = name;
+    await loadWorkers();
+    await loadTodayLog();
+  }
+
+  // ── WORKERS from Supabase ──
+  async function loadWorkers() {
+    updateDBStatus('loading');
+    const { data, error } = await db.from('workers').select('*');
+    if (error) {
+      updateDBStatus('error');
+      showToast('⚠ Σφάλμα φόρτωσης εργαζομένων', '#e8600a');
+      return;
+    }
+    // Normalize field names (Supabase uses snake_case)
+    workerDB = (data || []).map(w => ({
+      id:           w.id,
+      ama:          w.ama,
+      amka:         w.amka,
+      afm:          w.afm,
+      arAdErgasias: w.ar_ad_ergasias,
+      eponimo:      w.eponimo,
+      onoma:        w.onoma,
+      patronimo:    w.patronimo,
+      eidikotita:   w.eidikotita,
+      fasi:         w.fasi,
+      ergolabos:    w.ergolabos,
+      afmErgolabou: w.afm_ergolabou,
+    }));
+    updateDBStatus('loaded');
+  }
+
+  function updateDBStatus(state) {
+    const el = document.getElementById('dbStatus');
+    if (state === 'loading') {
+      el.innerHTML = '<span class="spinner"></span> Φόρτωση εργαζομένων…';
+      el.className = 'db-status';
+    } else if (state === 'loaded') {
+      el.textContent = `✓ ${workerDB.length} εργαζόμενοι · ${currentSite?.name || ''}`;
+      el.className = 'db-status loaded';
+    } else {
+      el.textContent = 'Σφάλμα σύνδεσης με βάση';
+      el.className = 'db-status';
+    }
+  }
+
+  // ── TODAY'S LOG from Supabase ──
+  async function loadTodayLog() {
+    if (!currentSite) return;
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    const { data, error } = await db
+      .from('attendance_log')
+      .select('*')
+      .eq('site_id', currentSite.id)
+      .eq('log_date', todayStr)
+      .order('created_at');
+    if (error) { console.error(error); return; }
+    todayLog = (data || []).map(r => ({
+      id:           r.worker_id,
+      eponimo:      r.eponimo,
+      onoma:        r.onoma,
+      eidikotita:   r.eidikotita,
+      ergolabos:    r.ergolabos,
+      timeIn:       r.time_in,
+      date:         r.log_date,
+      db_id:        r.id
+    }));
+    renderLog();
+  }
+
+  // ── SAVE CHECK-IN to Supabase ──
+  async function saveCheckin(entry) {
+    const { error } = await db.from('attendance_log').insert({
+      worker_id:  entry.id,
+      site_id:    currentSite.id,
+      eponimo:    entry.eponimo,
+      onoma:      entry.onoma,
+      eidikotita: entry.eidikotita,
+      ergolabos:  entry.ergolabos,
+      fasi:       entry.fasi || '',
+      time_in:    entry.timeIn,
+      log_date:   entry.date
+    });
+    if (error) {
+      console.error(error);
+      showToast('⚠ Σφάλμα αποθήκευσης', '#e8600a');
+    }
+  }
+
+  // ── TABS ──
+  function switchTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    const idx = tab === 'scan' ? 0 : 1;
+    document.querySelectorAll('.tab')[idx].classList.add('active');
+    document.getElementById(tab + 'View').classList.add('active');
+    if (tab === 'log') renderLog();
+  }
+
+  // ── TOAST ──
+  function showToast(msg, color) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = color || '#23a045';
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ── CAMERA ──
+  async function toggleCamera() {
+    if (scanning) { stopCamera(); } else { await startCamera(); }
+  }
+
+  async function startCamera() {
+    const btn  = document.getElementById('camBtn');
+    const hint = document.getElementById('scanHint');
+    btn.textContent = '⏳ Εκκίνηση…';
+    btn.disabled = true;
+    hint.textContent = 'Ζήτηση κάμερας…';
+    try {
+      codeReader = new ZXing.BrowserMultiFormatReader();
+      await codeReader.decodeFromConstraints(
+        { video: { facingMode: 'environment' } },
+        'camVideo',
+        (result, err) => {
+          if (result) {
+            const now = Date.now();
+            const raw = result.getText();
+            if (raw !== lastScan || now - lastScanTime > 3000) {
+              lastScan = raw; lastScanTime = now;
+              handleQRCode(raw);
             }
-        });
-
-        // --- SITE MANAGEMENT ---
-        async function loadSites() {
-            const { data, error } = await supabase
-                .from('sites')
-                .select('id, name')
-                .order('name');
-
-            if (error) {
-                showNotification('Σφάλμα φόρτωσης εργοταξίων', 'error');
-                return;
-            }
-
-            const select = document.getElementById('siteSelect');
-            select.innerHTML = '<option value="">-- Επιλέξτε Εργοτάξιο --</option>';
-            
-            data.forEach(site => {
-                const option = document.createElement('option');
-                option.value = site.id;
-                option.textContent = site.name;
-                select.appendChild(option);
-            });
+          }
         }
+      );
+      scanning = true;
+      btn.textContent = '⏹ Stop Camera';
+      btn.disabled = false;
+      hint.textContent = "Στρέψτε την κάμερα στο badge του εργαζομένου ↑";
+    } catch (e) {
+      btn.textContent = '▶ Έναρξη Κάμερας';
+      btn.disabled = false;
+      hint.textContent = 'Κάμερα μη διαθέσιμη — χρησιμοποιήστε Χειροκίνητη Εισαγωγή';
+      showToast('⚠ Camera error: ' + (e.message || e), '#e8600a');
+    }
+  }
 
-        function showSiteModal() {
-            document.getElementById('siteModal').style.display = 'flex';
-        }
+  function stopCamera() {
+    if (codeReader) { try { codeReader.reset(); } catch(_) {} codeReader = null; }
+    scanning = false;
+    document.getElementById('camBtn').textContent = '▶ Έναρξη Κάμερας';
+    document.getElementById('camBtn').disabled = false;
+    document.getElementById('scanHint').textContent = 'Πατήστε Έναρξη Κάμερας για σάρωση';
+  }
 
-        function changeSite() {
-            showSiteModal();
-        }
+  // ── QR PROCESSING ──
+  async function handleQRCode(raw) {
+    if (!currentSite) { showToast('⚠ Επιλέξτε εργοτάξιο πρώτα', '#e8600a'); return; }
+    let data;
+    try { data = JSON.parse(raw); } catch {
+      showFlash('error', '❌', 'Άκυρο QR Code', 'Δεν είναι SiteLog badge', '');
+      return;
+    }
+    if (!data.id) {
+      showFlash('error', '❌', 'Άγνωστο QR Code', 'Δεν βρέθηκε ID εργαζομένου', '');
+      return;
+    }
 
-        function confirmSiteSelection() {
-            const select = document.getElementById('siteSelect');
-            const siteId = select.value;
-            const siteName = select.options[select.selectedIndex].text;
+    const existing = todayLog.find(e => e.id === data.id);
+    if (existing) {
+      showFlash('dupe', '⚠️',
+        (data.fn || '') + ' ' + (data.ln || ''),
+        (data.trade || data.eidikotita || ''),
+        'Ήδη καταγεγραμμένος στις ' + existing.timeIn
+      );
+      return;
+    }
 
-            if (!siteId) {
-                showNotification('Παρακαλώ επιλέξτε εργοτάξιο', 'error');
-                return;
-            }
+    const dbRecord = workerDB.find(w => w.id === data.id);
+    const worker = dbRecord || {
+      id: data.id, eponimo: data.fn || '?', onoma: data.ln || '?',
+      eidikotita: data.trade || data.eidikotita || '?',
+      fasi: data.fasi || '', ergolabos: data.erg || data.ergolabos || '',
+      ama: data.ama || '', amka: data.amka || ''
+    };
 
-            currentSiteId = siteId;
-            currentSiteName = siteName.replace('-- Επιλέξτε Εργοτάξιο --', '').trim();
-            
-            sessionStorage.setItem('selectedSite', JSON.stringify({
-                id: currentSiteId,
-                name: currentSiteName
-            }));
+    const now = new Date();
+    const timeIn = now.toTimeString().slice(0, 5);
+    const entry = {
+      id: worker.id, eponimo: worker.eponimo || '', onoma: worker.onoma || '',
+      ama: worker.ama || '', amka: worker.amka || '',
+      eidikotita: worker.eidikotita || '', fasi: worker.fasi || '',
+      ergolabos: worker.ergolabos || '', afmErgolabou: worker.afmErgolabou || '',
+      timeIn, date: `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
+    };
 
-            document.getElementById('siteModal').style.display = 'none';
-            updateSiteDisplay();
-            loadTodayLogs();
-            showNotification(`Ενεργό εργοτάξιο: ${currentSiteName}`, 'success');
-        }
+    todayLog.push(entry);
+    renderLog();
+    await saveCheckin(entry);
 
-        function updateSiteDisplay() {
-            document.getElementById('currentSite').textContent = currentSiteName;
-        }
+    showFlash('success', '✅',
+      (worker.eponimo || '') + ' ' + (worker.onoma || ''),
+      (worker.eidikotita || '') + (worker.fasi ? ' | ' + worker.fasi : ''),
+      'Παρουσία: ' + timeIn
+    );
+    if (navigator.vibrate) navigator.vibrate(80);
+  }
 
-        // --- SCANNER FUNCTIONS ---
-        function startScanner() {
-            if (isScanning) return;
+  function showFlash(type, icon, name, meta, time) {
+    const el = document.getElementById('resultFlash');
+    el.className = 'result-flash ' + type;
+    document.getElementById('flashIcon').textContent = icon;
+    document.getElementById('flashName').textContent = name;
+    document.getElementById('flashMeta').textContent = meta;
+    document.getElementById('flashTime').textContent = time;
+    clearTimeout(el._timer);
+    el._timer = setTimeout(() => { el.className = 'result-flash'; }, 4000);
+  }
 
-            html5QrCode = new Html5Qrcode("reader");
-            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+  // ── MANUAL ENTRY ──
+  function toggleManual() {
+    const panel = document.getElementById('manualPanel');
+    panel.classList.toggle('open');
+    if (panel.classList.contains('open')) document.getElementById('manualSearch').focus();
+  }
 
-            html5QrCode.start(
-                { facingMode: "environment" },
-                config,
-                onScanSuccess,
-                onScanFailure
-            ).then(() => {
-                isScanning = true;
-                document.getElementById('startScanBtn').style.display = 'none';
-                document.getElementById('stopScanBtn').style.display = 'flex';
-            }).catch(err => {
-                showNotification('Σφάλμα εκκίνησης κάμερας', 'error');
-                console.error(err);
-            });
-        }
+  function searchManual() {
+    const q = document.getElementById('manualSearch').value.toLowerCase().trim();
+    const results = document.getElementById('manualResults');
+    if (!q || workerDB.length === 0) { results.innerHTML = ''; return; }
+    const matches = workerDB.filter(w =>
+      (w.eponimo + ' ' + w.onoma + ' ' + w.ama + ' ' + w.id).toLowerCase().includes(q)
+    ).slice(0, 5);
+    if (matches.length === 0) {
+      results.innerHTML = '<div style="font-size:0.75rem;color:#555;padding:4px 0">Δεν βρέθηκαν αποτελέσματα</div>';
+      return;
+    }
+    results.innerHTML = matches.map(w => `
+      <div onclick="manualCheckin('${w.id}')" style="
+        padding:8px 10px; margin-bottom:4px; background:var(--gray3);
+        border-radius:2px; cursor:pointer; display:flex; align-items:center; gap:10px;
+        font-size:0.85rem; border:1px solid transparent; transition:border-color 0.1s;
+      " onmouseover="this.style.borderColor='var(--yellow)'" onmouseout="this.style.borderColor='transparent'">
+        <span style="font-weight:600">${w.eponimo || ''} ${w.onoma || ''}</span>
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:0.65rem;color:#888">${w.id} · ${w.eidikotita || ''}</span>
+      </div>
+    `).join('');
+  }
 
-        function stopScanner() {
-            if (!isScanning || !html5QrCode) return;
+  async function manualCheckin(id) {
+    if (!currentSite) { showToast('⚠ Επιλέξτε εργοτάξιο πρώτα', '#e8600a'); return; }
+    const w = workerDB.find(x => x.id === id);
+    if (!w) return;
+    const existing = todayLog.find(e => e.id === id);
+    if (existing) {
+      showToast(`⚠ ${w.eponimo || ''} ${w.onoma || ''} — Ήδη καταγεγραμμένος στις ${existing.timeIn}`, '#e8600a');
+      return;
+    }
+    const now = new Date();
+    const timeIn = now.toTimeString().slice(0, 5);
+    const entry = {
+      id: w.id, eponimo: w.eponimo || '', onoma: w.onoma || '',
+      ama: w.ama || '', amka: w.amka || '',
+      eidikotita: w.eidikotita || '', fasi: w.fasi || '',
+      ergolabos: w.ergolabos || '', afmErgolabou: w.afmErgolabou || '',
+      timeIn, date: `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
+    };
+    todayLog.push(entry);
+    renderLog();
+    await saveCheckin(entry);
 
-            html5QrCode.stop().then(() => {
-                isScanning = false;
-                document.getElementById('startScanBtn').style.display = 'flex';
-                document.getElementById('stopScanBtn').style.display = 'none';
-                html5QrCode.clear();
-            }).catch(err => {
-                console.error(err);
-            });
-        }
+    document.getElementById('manualSearch').value = '';
+    document.getElementById('manualResults').innerHTML = '';
+    document.getElementById('manualPanel').classList.remove('open');
+    showToast(`✓ ${w.eponimo || ''} ${w.onoma || ''} — Παρουσία: ${timeIn}`);
+    showFlash('success', '✅', (w.eponimo||'') + ' ' + (w.onoma||''), (w.eidikotita||'') + (w.fasi ? ' | ' + w.fasi : ''), 'Παρουσία: ' + timeIn);
+    if (navigator.vibrate) navigator.vibrate(80);
+  }
 
-        function onScanSuccess(decodedText, decodedResult) {
-            // Stop scanning temporarily to process
-            stopScanner();
-            processEntry(decodedText);
-        }
+  // ── RENDER LOG ──
+  function renderLog() {
+    const q = (document.getElementById('logSearch')?.value || '').toLowerCase();
+    const list = document.getElementById('logList');
+    const filtered = todayLog.filter(e =>
+      (e.eponimo + ' ' + e.onoma + ' ' + e.eidikotita + ' ' + e.ergolabos).toLowerCase().includes(q)
+    );
+    document.getElementById('logTotal').textContent = todayLog.length;
+    document.getElementById('logTrades').textContent = new Set(todayLog.map(e => e.eidikotita)).size;
+    document.getElementById('logCompanies').textContent = new Set(todayLog.map(e => e.ergolabos).filter(Boolean)).size;
+    if (filtered.length === 0) {
+      list.innerHTML = '<div class="empty-log">Δεν υπάρχουν παρουσίες ακόμα.<br>Σαρώστε badges στην καρτέλα Σάρωσης.</div>';
+      return;
+    }
+    list.innerHTML = filtered.map((e, i) => `
+      <div class="log-item">
+        <div class="log-num">${todayLog.indexOf(e) + 1}</div>
+        <div class="log-info">
+          <div class="log-name">${e.eponimo || ''} ${e.onoma || ''}</div>
+          <div class="log-sub">
+            <span class="badge badge-yellow" style="font-size:0.55rem">${e.eidikotita || '—'}</span>
+            ${e.fasi ? '<span style="font-size:0.65rem;color:#888;margin-left:4px">' + e.fasi + '</span>' : ''}
+            ${e.ergolabos ? '<span style="font-size:0.65rem;color:#777;margin-left:4px">· ' + e.ergolabos + '</span>' : ''}
+          </div>
+        </div>
+        <div class="log-time">${e.timeIn}</div>
+        <button class="log-delete" onclick="deleteEntry(${e.db_id})" title="Διαγραφή εγγραφής">✕</button>
+      </div>
+    `).join('');
+  }
 
-        function onScanFailure(error) {
-            // Handle scan failure silently or log it
-        }
+  // ── EXPORT CSV ──
+  function exportCSV() {
+    if (todayLog.length === 0) { showToast('Δεν υπάρχουν εγγραφές για εξαγωγή', '#e8600a'); return; }
+    const headers = ['#','Εργοτάξιο','Ημερομηνία','Ώρα Εισόδου','Επώνυμο','Όνομα','Α.Μ.Α.','Α.Μ.Κ.Α.','Ειδικότητα','Φάση','Εργολάβος','ID'];
+    const rows = todayLog.map((e, i) => [
+      i + 1, currentSite?.name || '', e.date, e.timeIn,
+      e.eponimo, e.onoma, e.ama, e.amka,
+      e.eidikotita, e.fasi, e.ergolabos, e.id
+    ].map(v => `"${String(v || '').replace(/"/g, '""')}"`).join(','));
+    const csv = [headers.join(','), ...rows].join('\n');
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `site-log-${currentSite?.name || 'site'}-${todayLog[0]?.date || 'today'}.csv`;
+    a.click(); URL.revokeObjectURL(a.href);
+    showToast(`✓ Εξαγωγή ${todayLog.length} εργαζομένων`);
+  }
 
-        function processManualEntry() {
-            const input = document.getElementById('manualId');
-            const id = input.value.trim();
-            if (!id) {
-                showNotification('Παρακαλώ εισάγετε ID', 'error');
-                return;
-            }
-            processEntry(id);
-            input.value = '';
-        }
+  // ── CLEAR LOG ──
+  async function clearLog() {
+    if (todayLog.length === 0) return;
+    if (!confirm(`ΠΡΟΣΟΧΗ: Θα διαγραφούν ΟΛΕΣ οι ${todayLog.length} παρουσίες από τη βάση δεδομένων.\n\nΕίστε σίγουροι ότι θέλετε να συνεχίσετε;`)) return;
+    if (!confirm('ΕΠΑΛΗΘΕΥΣΗ: Θέλετε σίγουρα να διαγράψετε όλες τις εγγραφές;')) return;
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const { error } = await db.from('attendance_log')
+      .delete()
+      .eq('site_id', currentSite.id)
+      .eq('log_date', todayStr);
+    if (error) { showToast('⚠ Σφάλμα διαγραφής', '#e8600a'); return; }
+    todayLog = [];
+    renderLog();
+    showToast('Ημερολόγιο καθαρίστηκε', '#888');
+  }
 
-        async function processEntry(workerId) {
-            if (!currentSiteId) {
-                showNotification('Παρακαλώ επιλέξτε πρώτα εργοτάξιο', 'error');
-                showSiteModal();
-                return;
-            }
+  // ── DELETE SINGLE ENTRY ──
+  async function deleteEntry(dbId) {
+    const entry = todayLog.find(e => e.db_id === dbId);
+    if (!entry) return;
+    const name = `${entry.eponimo || ''} ${entry.onoma || ''}`.trim() || 'Άγνωστος';
+    if (!confirm(`Διαγραφή της εγγραφής:\n\n${name}\nΏρα εισόδου: ${entry.timeIn}\n\nΕίστε σίγουροι;`)) return;
+    if (!confirm('ΕΠΑΛΗΘΕΥΣΗ: Θέλετε σίγουρα να διαγράψετε αυτή την εγγραφή;')) return;
+    
+    const { error } = await db.from('attendance_log')
+      .delete()
+      .eq('id', dbId);
+    if (error) { 
+      showToast('⚠ Σφάλμα διαγραφής', '#e8600a'); 
+      console.error(error);
+      return; 
+    }
+    todayLog = todayLog.filter(e => e.db_id !== dbId);
+    renderLog();
+    showToast(`✓ Η εγγραφή διαγράφηκε`, '#23a045');
+  }
 
-            // Fetch worker details
-            const { data: worker, error } = await supabase
-                .from('workers')
-                .select('*')
-                .eq('id', workerId)
-                .single();
-
-            if (error || !worker) {
-                showNotification('Δεν βρέθηκε εργαζόμενος με αυτό το ID', 'error');
-                if(isScanning) startScanner(); // Resume scanning
-                return;
-            }
-
-            // Check if already checked in today for this site
-            const today = new Date().toISOString().split('T')[0];
-            const { data: existing } = await supabase
-                .from('attendance_log')
-                .select('id')
-                .eq('worker_id', worker.id)
-                .eq('site_id', currentSiteId)
-                .eq('log_date', today)
-                .single();
-
-            if (existing) {
-                showNotification(`${worker.onoma} ${worker.eponimo} έχει ήδη καταγραφεί σήμερα`, 'error');
-                if(isScanning) startScanner();
-                return;
-            }
-
-            // Determine Phase Logic
-            let phaseValue = worker.default_phase;
-            
-            // If worker is multi-phase, we need to ask the user via Modal
-            if (worker.is_multi_phase) {
-                pendingEntry = {
-                    worker: worker,
-                    siteId: currentSiteId,
-                    date: today
-                };
-                
-                // Show Phase Modal
-                document.getElementById('phaseWorkerName').textContent = `${worker.onoma} ${worker.eponimo}`;
-                document.getElementById('phaseSelect').value = ""; // Reset selection
-                document.getElementById('phaseModal').style.display = 'flex';
-                // Do NOT resume scanner yet, wait for modal action
-            } else {
-                // Single phase worker, proceed directly
-                saveCheckin(worker, phaseValue);
-            }
-        }
-
-        // Modal Actions for Phase
-        function closePhaseModal() {
-            document.getElementById('phaseModal').style.display = 'none';
-            pendingEntry = null;
-            if(isScanning) startScanner();
-        }
-
-        function confirmPhaseSelection() {
-            const phaseSelect = document.getElementById('phaseSelect');
-            const selectedPhase = phaseSelect.value;
-
-            if (!selectedPhase) {
-                showNotification('Παρακαλώ επιλέξτε μια φάση', 'error');
-                return;
-            }
-
-            if (pendingEntry) {
-                saveCheckin(pendingEntry.worker, selectedPhase);
-                closePhaseModal();
-            }
-        }
-
-        async function saveCheckin(worker, phase) {
-            const now = new Date();
-            const timeIn = now.toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit' });
-            const logDate = now.toISOString().split('T')[0];
-
-            const { error } = await supabase
-                .from('attendance_log')
-                .insert({
-                    worker_id: worker.id,
-                    site_id: currentSiteId,
-                    time_in: timeIn,
-                    log_date: logDate,
-                    fasi: phase || worker.default_phase // Fallback to default if empty
-                });
-
-            if (error) {
-                showNotification('Σφάλμα αποθήκευσης: ' + error.message, 'error');
-            } else {
-                showNotification(`Επιτυχής καταχώρηση: ${worker.onoma} ${worker.eponimo}`, 'success');
-                loadTodayLogs();
-            }
-
-            // Always resume scanning after processing
-            if(isScanning) startScanner();
-            else startScanner(); // Ensure scanner restarts even if stopped
-        }
-
-        // --- LOGS MANAGEMENT ---
-        async function loadTodayLogs() {
-            if (!currentSiteId) return;
-
-            const today = new Date().toISOString().split('T')[0];
-            const list = document.getElementById('todayLogs');
-            list.innerHTML = '<li style="text-align: center; color: var(--secondary);">Φόρτωση...</li>';
-
-            // Fetch logs joined with worker info
-            const { data: logs, error } = await supabase
-                .from('attendance_log')
-                .select(`
-                    id,
-                    worker_id,
-                    time_in,
-                    fasi,
-                    workers (
-                        onoma,
-                        eponimo,
-                        eidikotita,
-                        default_phase
-                    )
-                `)
-                .eq('site_id', currentSiteId)
-                .eq('log_date', today)
-                .order('time_in', { ascending: false });
-
-            if (error) {
-                list.innerHTML = '<li style="text-align: center; color: var(--danger);">Σφάλμα φόρτωσης</li>';
-                return;
-            }
-
-            if (logs.length === 0) {
-                list.innerHTML = '<li style="text-align: center; color: var(--secondary);">Δεν υπάρχουν καταχωρήσεις σήμερα</li>';
-                return;
-            }
-
-            list.innerHTML = '';
-            logs.forEach(log => {
-                const w = log.workers;
-                const displayName = w ? `${w.onoma} ${w.eponimo}` : 'Άγνωστος';
-                const specialty = w ? w.eidikotita : '';
-                // Use log.fasi if exists, otherwise worker default
-                const phaseDisplay = log.fasi || (w ? w.default_phase : 'N/A');
-
-                const li = document.createElement('li');
-                li.className = 'log-item';
-                li.innerHTML = `
-                    <div class="log-info">
-                        <div class="log-name">${displayName}</div>
-                        <div class="log-details">${specialty} | Φάση: ${phaseDisplay}</div>
-                    </div>
-                    <div class="log-time">${log.time_in}</div>
-                    <button class="delete-btn" onclick="deleteEntry(${log.id}, '${displayName}')" title="Διαγραφή">✕</button>
-                `;
-                list.appendChild(li);
-            });
-        }
-
-        function deleteEntry(logId, name) {
-            // First confirmation
-            showConfirmModal(
-                `Διαγραφή εγγραφής;`,
-                `Θέλετε σίγουρα να διαγράψετε την καταχώρηση του/της ${name};`,
-                () => {
-                    // Second confirmation logic inside the callback of the first if needed, 
-                    // but for UX usually one strong confirmation with details is enough.
-                    // However, per request, let's do a double check simulation or just one strong one.
-                    // Implementing single strong confirmation for better UX as double modal is annoying.
-                    performDelete(logId);
-                }
-            );
-        }
-
-        function performDelete(logId) {
-            supabase
-                .from('attendance_log')
-                .delete()
-                .eq('id', logId)
-                .then(({ error }) => {
-                    if (error) {
-                        showNotification('Σφάλμα διαγραφής', 'error');
-                    } else {
-                        showNotification('Η εγγραφή διαγράφηκε', 'success');
-                        loadTodayLogs();
-                    }
-                    closeConfirmModal();
-                });
-        }
-
-        function clearTodayLogs() {
-            if (!currentSiteId) return;
-            
-            showConfirmModal(
-                "Μαζική Διαγραφή",
-                "Προσοχή: Αυτό θα διαγράψει ΟΛΕΣ τις σημερινές καταχωρήσεις για αυτό το εργοτάξιο. Είστε σίγουρος;",
-                () => {
-                     // Second step confirmation could go here, but proceeding with action
-                     executeClear();
-                }
-            );
-        }
-
-        function executeClear() {
-            const today = new Date().toISOString().split('T')[0];
-            
-            supabase
-                .from('attendance_log')
-                .delete()
-                .eq('site_id', currentSiteId)
-                .eq('log_date', today)
-                .then(({ error }) => {
-                    if (error) {
-                        showNotification('Σφάλμα καθαρισμού', 'error');
-                    } else {
-                        showNotification('Όλες οι εγγραφές διαγράφηκαν', 'success');
-                        loadTodayLogs();
-                    }
-                    closeConfirmModal();
-                });
-        }
-
-        // --- UTILS ---
-        function showNotification(message, type) {
-            const notif = document.getElementById('notification');
-            notif.textContent = message;
-            notif.className = `notification ${type} show`;
-            
-            setTimeout(() => {
-                notif.classList.remove('show');
-            }, 3000);
-        }
-
-        function showConfirmModal(title, message, onConfirm) {
-            document.getElementById('confirmTitle').textContent = title;
-            document.getElementById('confirmMessage').textContent = message;
-            
-            const btn = document.getElementById('confirmActionBtn');
-            // Clone button to remove old event listeners
-            const newBtn = btn.cloneNode(true);
-            btn.parentNode.replaceChild(newBtn, btn);
-            
-            newBtn.addEventListener('click', onConfirm);
-            newBtn.style.display = 'block';
-            
-            document.getElementById('confirmModal').style.display = 'flex';
-        }
-
-        function closeConfirmModal() {
-            document.getElementById('confirmModal').style.display = 'none';
-        }
-    </script>
+  // ── START ──
+  init();
+</script>
 </body>
 </html>
