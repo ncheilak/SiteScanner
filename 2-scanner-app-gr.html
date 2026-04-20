@@ -769,7 +769,7 @@
           </div>
         </div>
         <div class="log-time">${e.timeIn}</div>
-        <button class="log-delete" onclick="deleteEntry(${e.id})" title="Διαγραφή εγγραφής">✕</button>
+        <button class="log-delete" onclick="deleteEntry(${e.db_id})" title="Διαγραφή εγγραφής">✕</button>
       </div>
     `).join('');
   }
@@ -809,8 +809,8 @@
   }
 
   // ── DELETE SINGLE ENTRY ──
-  async function deleteEntry(id) {
-    const entry = todayLog.find(e => e.id === id);
+  async function deleteEntry(dbId) {
+    const entry = todayLog.find(e => e.db_id === dbId);
     if (!entry) return;
     const name = `${entry.eponimo || ''} ${entry.onoma || ''}`.trim() || 'Άγνωστος';
     if (!confirm(`Διαγραφή της εγγραφής:\n\n${name}\nΏρα εισόδου: ${entry.timeIn}\n\nΕίστε σίγουροι;`)) return;
@@ -818,13 +818,13 @@
     
     const { error } = await db.from('attendance_log')
       .delete()
-      .eq('id', id);
+      .eq('id', dbId);
     if (error) { 
       showToast('⚠ Σφάλμα διαγραφής', '#e8600a'); 
       console.error(error);
       return; 
     }
-    todayLog = todayLog.filter(e => e.id !== id);
+    todayLog = todayLog.filter(e => e.db_id !== dbId);
     renderLog();
     showToast(`✓ Η εγγραφή διαγράφηκε`, '#23a045');
   }
