@@ -132,7 +132,7 @@
       <div class="form-group"><label>ΠΑΤΡΩΝΥΜΟ</label><input type="text" id="patronimo" placeholder="Νικόλαος" onkeydown="enterAdd(event)"></div>
       <div class="form-group"><label>ΕΙΔΙΚΟΤΗΤΑ *</label><input type="text" id="eidikotita" placeholder="π.χ. Χτίστης, Σιδηρουργός…" onkeydown="enterAdd(event)"></div>
       <div class="form-group">
-        <label>ΦΑΣΗ ΚΑΤΑΣΚΕΥΗΣ *</label>
+        <label>ΠΡΟΕΠΙΛΕΓΜΕΝΗ ΦΑΣΗ</label>
         <select id="fasi">
           <option value="">— Επιλογή —</option>
           <option>01: Εκσκαφές &amp; Οικοδομικός Σκελετός</option>
@@ -142,6 +142,10 @@
           <option>05: Διάφορες Εργασίες</option>
           <option>06: Εργασίες Εγκαταστάσεων</option>
         </select>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-top:8px">
+        <input type="checkbox" id="isMultiPhase">
+        <label for="isMultiPhase" style="font-family:'IBM Plex Sans',sans-serif;font-size:0.75rem;color:var(--white);text-transform:none;letter-spacing:0;margin:0;cursor:pointer">Ο εργαζόμενος μπορεί να απασχοληθεί σε πολλαπλές Φάσεις</label>
       </div>
       <div class="form-group"><label>ΕΡΓΟΛΑΒΟΣ</label><input type="text" id="ergolabos" placeholder="Επωνυμία εργολάβου" onkeydown="enterAdd(event)"></div>
       <div class="form-group"><label>ΑΦΜ ΕΡΓΟΛΑΒΟΥ</label><input type="text" id="afmErg" placeholder="000000000" onkeydown="enterAdd(event)"></div>
@@ -190,7 +194,8 @@
             <th class="req">ΟΝΟΜΑ</th>
             <th>ΠΑΤΡΩΝΥΜΟ</th>
             <th class="req">ΕΙΔΙΚΟΤΗΤΑ</th>
-            <th class="req">ΦΑΣΗ ΚΑΤΑΣΚΕΥΗΣ</th>
+            <th class="req">ΠΡΟΕΠΙΛΕΓΜΕΝΗ ΦΑΣΗ</th>
+            <th>ΠΟΛΛΑΠΛΕΣ ΦΑΣΕΙΣ</th>
             <th>ΕΡΓΟΛΑΒΟΣ</th>
             <th>ΑΦΜ ΕΡΓΟΛΑΒΟΥ</th>
             <th></th>
@@ -270,7 +275,8 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
       onoma:         w.onoma || '',
       patronimo:     w.patronimo || '',
       eidikotita:    w.eidikotita || '',
-      fasi:          w.fasi || '',
+      fasi:          w.default_phase || '',
+      isMultiPhase:  w.is_multi_phase || false,
       ergolabos:     w.ergolabos || '',
       afmErgolabou:  w.afm_ergolabou || '',
       registeredAt:  w.registered_at || '',
@@ -308,7 +314,8 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
       onoma:          w.onoma,
       patronimo:      w.patronimo,
       eidikotita:     w.eidikotita,
-      fasi:           w.fasi,
+      default_phase:  w.fasi,
+      is_multi_phase: w.isMultiPhase,
       ergolabos:      w.ergolabos,
       afm_ergolabou:  w.afmErgolabou,
       registered_at:  w.registeredAt,
@@ -357,19 +364,21 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
   function addWorker() {
     const v = id => document.getElementById(id).value.trim();
     const ama=v('ama'),amka=v('amka'),eponimo=v('eponimo'),onoma=v('onoma'),
-          eidikotita=v('eidikotita'),fasi=document.getElementById('fasi').value;
+          eidikotita=v('eidikotita'),fasi=document.getElementById('fasi').value,
+          isMultiPhase=document.getElementById('isMultiPhase').checked;
     if (!ama)        { showToast('⚠ Απαιτείται Α.Μ.Α.','#e8600a'); return; }
     if (!amka)       { showToast('⚠ Απαιτείται Α.Μ.Κ.Α.','#e8600a'); return; }
     if (!eponimo)    { showToast('⚠ Απαιτείται Επώνυμο','#e8600a'); return; }
     if (!onoma)      { showToast('⚠ Απαιτείται Όνομα','#e8600a'); return; }
     if (!eidikotita) { showToast('⚠ Απαιτείται Ειδικότητα','#e8600a'); return; }
-    if (!fasi)       { showToast('⚠ Επιλέξτε Φάση Κατασκευής','#e8600a'); return; }
+    if (!fasi)       { showToast('⚠ Επιλέξτε Προεπιλεγμένη Φάση','#e8600a'); return; }
     workers.push({ id: nextId(), ama, amka, afm: v('afm'), arAdErgasias: v('arAd'),
-      eponimo, onoma, patronimo: v('patronimo'), eidikotita, fasi,
+      eponimo, onoma, patronimo: v('patronimo'), eidikotita, fasi, isMultiPhase,
       ergolabos: v('ergolabos'), afmErgolabou: v('afmErg'), registeredAt: new Date().toISOString() });
     ['ama','amka','afm','arAd','eponimo','onoma','patronimo','eidikotita','ergolabos','afmErg']
       .forEach(id => document.getElementById(id).value = '');
     document.getElementById('fasi').value = '';
+    document.getElementById('isMultiPhase').checked = false;
     document.getElementById('ama').focus();
     renderTable();
     showToast(`✓ ${eponimo} ${onoma} προστέθηκε — πατήστε "Αποθήκευση στο Supabase"`);
@@ -404,6 +413,7 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
           <option value="">— Επιλογή —</option>
           ${FASI.map(f=>`<option${w.fasi===f?' selected':''}>${f}</option>`).join('')}
         </select></td>
+        <td style="text-align:center"><input type="checkbox" ${w.isMultiPhase?'checked':''} onchange="upd(${i},'isMultiPhase',this.checked)"></td>
         <td><input class="cell-input" value="${esc(w.ergolabos)}" onchange="upd(${i},'ergolabos',this.value)"></td>
         <td><input class="cell-input" value="${esc(w.afmErgolabou)}" onchange="upd(${i},'afmErgolabou',this.value)" style="font-family:monospace;font-size:0.75rem"></td>
         <td><button class="del-btn" onclick="deleteRow(${i})">✕</button></td>
