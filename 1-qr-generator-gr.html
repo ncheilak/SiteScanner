@@ -256,7 +256,7 @@
 
     let query = db
       .from('workers')
-      .select('id, eponimo, onoma, eidikotita, ergolabos, ama')
+      .select('id, eponimo, onoma, eidikotita, ergolabos, ama, amka')
       .order('eponimo')
       .limit(20);
 
@@ -289,6 +289,7 @@
       eidikotita: w.eidikotita || '',
       ergolabos:  w.ergolabos || '',
       ama:        w.ama || '',
+      amka:       w.amka || '',
     }));
 
     document.getElementById('resultsLabel').textContent =
@@ -322,7 +323,8 @@
         </div>
         <div class="worker-meta">
           ${w.ergolabos ? '<div>🏗 <strong>' + w.ergolabos + '</strong></div>' : ''}
-          ${w.ama ? '<div>🪪 ΑΜΑ: ' + w.ama + '</div>' : ''}
+          ${w.ama  ? '<div>🪪 ΑΜΑ: ' + w.ama + '</div>' : ''}
+          ${w.amka ? '<div>🩺 ΑΜΚΑ: ' + w.amka + '</div>' : ''}
         </div>
         <div class="qr-area" id="qr-${w.id}">
           <span class="spinner"></span>
@@ -358,12 +360,15 @@
 
         // Encode payload to UTF-8 bytes so Greek characters are stored correctly
         // and any standalone QR reader can decode them properly
-        const encoder = new TextEncoder(); // always UTF-8
+        // Encode to UTF-8 bytes then convert to binary string
+        // so qrcode-generator's Byte mode stores proper UTF-8 data
+        const encoder = new TextEncoder();
         const bytes = encoder.encode(payload);
+        let binaryStr = '';
+        bytes.forEach(b => binaryStr += String.fromCharCode(b));
 
         const qr = qrcode(0, 'M');
-        // Pass raw byte array — qrcode-generator accepts Uint8Array for byte mode
-        qr.addData(bytes, 'Byte');
+        qr.addData(binaryStr, 'Byte');
         qr.make();
 
         const SIZE = 400;
