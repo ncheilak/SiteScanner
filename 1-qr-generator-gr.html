@@ -42,23 +42,34 @@
   .search-label{
     font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;
     color:var(--orange);text-transform:uppercase;letter-spacing:2px;
-    margin-bottom:10px;display:flex;align-items:center;gap:8px;
+    margin-bottom:14px;display:flex;align-items:center;gap:8px;
   }
   .search-label::before{content:'';display:inline-block;width:20px;height:2px;background:var(--orange)}
-  
-  /* Προσαρμογή του search-box για να χωράει τα 3 πεδία */
-  .search-box{
-    display:flex;gap:8px;flex-wrap:wrap;
+
+  .search-fields{
+    display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;
   }
-  .search-box input, .search-box select {
-    flex:1;background:var(--gray2);border:1px solid var(--gray3);border-radius:2px;
-    color:var(--white);font-family:'IBM Plex Sans',sans-serif;font-size:1rem;
-    padding:12px 16px;outline:none;transition:border-color 0.15s;
-    min-width: 140px;
+  .search-fields .field-full{grid-column:1/-1}
+
+  .field-group{display:flex;flex-direction:column;gap:5px}
+  .field-group label{
+    font-family:'IBM Plex Mono',monospace;font-size:0.55rem;font-weight:600;
+    color:var(--gray4);text-transform:uppercase;letter-spacing:1.5px;
   }
-  .search-box input:focus, .search-box select:focus {border-color:var(--yellow)}
-  .search-box input::placeholder{color:var(--gray4)}
-  .search-box select option { background: var(--gray2); color: var(--white); }
+  .field-group input,
+  .field-group select{
+    background:var(--gray2);border:1px solid var(--gray3);border-radius:2px;
+    color:var(--white);font-family:'IBM Plex Sans',sans-serif;font-size:0.95rem;
+    padding:11px 14px;outline:none;transition:border-color 0.15s;width:100%;
+  }
+  .field-group input:focus,
+  .field-group select:focus{border-color:var(--yellow)}
+  .field-group input::placeholder{color:var(--gray4)}
+  .field-group select{cursor:pointer;appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7' viewBox='0 0 12 7'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%235a5a5a' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
+  .field-group select option{background:var(--black)}
+  .field-group select:disabled{opacity:0.5;cursor:default}
+
+  .search-actions{display:flex;gap:8px;margin-top:4px}
 
   .btn{border:none;border-radius:2px;cursor:pointer;font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;transition:opacity 0.15s,transform 0.1s;white-space:nowrap}
   .btn:active{transform:scale(0.97)}
@@ -70,7 +81,7 @@
 
   .search-hint{
     font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--gray4);
-    margin-top:8px;line-height:1.6;
+    margin-top:10px;line-height:1.6;
   }
 
   .results-section{max-width:700px;margin:32px auto;padding:0 20px 60px}
@@ -117,6 +128,11 @@
   .toast{position:fixed;bottom:20px;right:20px;background:var(--green);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;padding:9px 16px;border-radius:3px;opacity:0;transform:translateY(8px);transition:opacity 0.2s,transform 0.2s;pointer-events:none;z-index:999}
   .toast.show{opacity:1;transform:translateY(0)}
 
+  @media(max-width:520px){
+    .search-fields{grid-template-columns:1fr}
+    .search-fields .field-full{grid-column:1}
+  }
+
   @media print{
     body *{visibility:hidden}
     #printArea,#printArea *{visibility:visible}
@@ -141,15 +157,35 @@
 
 <div class="search-section">
   <div class="search-label">Αναζήτηση Εργαζομένου</div>
-  <div class="search-box">
-    <input type="text" id="searchEponimo" placeholder="Επώνυμο…" onkeydown="if(event.key==='Enter') doSearch()">
-    <input type="text" id="searchOnoma" placeholder="Όνομα…" onkeydown="if(event.key==='Enter') doSearch()">
-    <select id="searchErgolabos" style="cursor:pointer;">
-      <option value="">— Όλοι οι Εργολάβοι —</option>
-    </select>
-    <button class="btn btn-yellow" onclick="doSearch()" id="searchBtn">Αναζήτηση</button>
+
+  <div class="search-fields">
+    <!-- Επώνυμο -->
+    <div class="field-group">
+      <label>Επώνυμο</label>
+      <input type="text" id="searchEponimo" placeholder="π.χ. Παπαδόπουλος"
+        onkeydown="if(event.key==='Enter') doSearch()">
+    </div>
+    <!-- Όνομα -->
+    <div class="field-group">
+      <label>Όνομα</label>
+      <input type="text" id="searchOnoma" placeholder="π.χ. Γιάννης"
+        onkeydown="if(event.key==='Enter') doSearch()">
+    </div>
+    <!-- Εργολάβος (full-width dropdown) -->
+    <div class="field-group field-full">
+      <label>Εργολάβος</label>
+      <select id="searchErgolabos">
+        <option value="">— Όλοι οι Εργολάβοι —</option>
+      </select>
+    </div>
   </div>
-  <div class="search-hint">Συμπληρώστε τουλάχιστον ένα πεδίο · Εμφανίζονται έως 20 αποτελέσματα</div>
+
+  <div class="search-actions">
+    <button class="btn btn-yellow" onclick="doSearch()" id="searchBtn">Αναζήτηση</button>
+    <button class="btn btn-outline" onclick="clearSearch()">Καθαρισμός</button>
+  </div>
+
+  <div class="search-hint">Συμπληρώστε ένα ή περισσότερα πεδία · Εμφανίζονται έως 20 αποτελέσματα</div>
 </div>
 
 <div class="results-section" id="resultsSection" style="display:none">
@@ -173,44 +209,62 @@
 
   let qrCache = {};
 
-  // Φόρτωση μοναδικών Εργολάβων στο Dropdown
-  async function loadContractors() {
-    const { data, error } = await db.from('workers').select('ergolabos');
-    if (error) return;
-    
-    const unique = [...new Set(data.map(w => w.ergolabos).filter(e => e && e.trim() !== ''))].sort();
-    const select = document.getElementById('searchErgolabos');
-    unique.forEach(erg => {
-      const opt = document.createElement('option');
-      opt.value = erg;
-      opt.textContent = erg;
-      select.appendChild(opt);
+  // ── INIT: load ergolabos list ──
+  async function init() {
+    const sel = document.getElementById('searchErgolabos');
+    sel.innerHTML = '<option value="">— Φόρτωση… —</option>';
+    sel.disabled = true;
+
+    const { data, error } = await db
+      .from('workers')
+      .select('ergolabos')
+      .not('ergolabos', 'is', null)
+      .neq('ergolabos', '');
+
+    if (error) {
+      sel.innerHTML = '<option value="">— Σφάλμα φόρτωσης —</option>';
+      sel.disabled = false;
+      return;
+    }
+
+    // Unique, sorted list
+    const unique = [...new Set((data || []).map(r => r.ergolabos).filter(Boolean))].sort((a,b) => a.localeCompare(b, 'el'));
+    sel.innerHTML = '<option value="">— Όλοι οι Εργολάβοι —</option>';
+    unique.forEach(e => {
+      const o = document.createElement('option');
+      o.value = e; o.textContent = e;
+      sel.appendChild(o);
     });
+    sel.disabled = false;
   }
-  loadContractors();
 
   // ── SEARCH ──
   async function doSearch() {
-    const ep = document.getElementById('searchEponimo').value.trim();
-    const on = document.getElementById('searchOnoma').value.trim();
-    const erg = document.getElementById('searchErgolabos').value;
+    const eponimo   = document.getElementById('searchEponimo').value.trim();
+    const onoma     = document.getElementById('searchOnoma').value.trim();
+    const ergolabos = document.getElementById('searchErgolabos').value;
 
-    if (!ep && !on && !erg) { 
-      showToast('Συμπληρώστε τουλάχιστον ένα πεδίο αναζήτησης', '#e8600a'); 
-      return; 
+    // At least one field must have a value
+    if (!eponimo && !onoma && !ergolabos) {
+      showToast('Συμπληρώστε τουλάχιστον ένα πεδίο αναζήτησης', '#e8600a');
+      return;
     }
 
     const btn = document.getElementById('searchBtn');
     btn.innerHTML = '<span class="spinner"></span>';
     btn.disabled = true;
 
-    // Δυναμικό χτίσιμο query
-    let query = db.from('workers').select('id, eponimo, onoma, eidikotita, ergolabos, default_phase, is_multi_phase, ama');
-    if (ep) query = query.ilike('eponimo', `%${ep}%`);
-    if (on) query = query.ilike('onoma', `%${on}%`);
-    if (erg) query = query.eq('ergolabos', erg);
+    let query = db
+      .from('workers')
+      .select('id, eponimo, onoma, eidikotita, ergolabos, ama')
+      .order('eponimo')
+      .limit(20);
 
-    const { data, error } = await query.order('eponimo').limit(20);
+    if (eponimo)   query = query.ilike('eponimo', `%${eponimo}%`);
+    if (onoma)     query = query.ilike('onoma', `%${onoma}%`);
+    if (ergolabos) query = query.eq('ergolabos', ergolabos);
+
+    const { data, error } = await query;
 
     btn.innerHTML = 'Αναζήτηση';
     btn.disabled = false;
@@ -224,19 +278,17 @@
     if (!data || data.length === 0) {
       document.getElementById('resultsLabel').textContent = 'Δεν βρέθηκαν αποτελέσματα';
       document.getElementById('workerGrid').innerHTML =
-        '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:0.75rem;color:var(--gray4);padding:20px 0">Δοκιμάστε διαφορετικά κριτήρια αναζήτησης.</div>';
+        '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:0.75rem;color:var(--gray4);padding:20px 0">Δοκιμάστε διαφορετικό όρο αναζήτησης.</div>';
       return;
     }
 
     const workers = data.map(w => ({
-      id:           w.id,
-      eponimo:      w.eponimo || '',
-      onoma:        w.onoma || '',
-      eidikotita:   w.eidikotita || '',
-      ergolabos:    w.ergolabos || '',
-      defaultPhase: w.default_phase || '',
-      isMultiPhase: w.is_multi_phase || false,
-      ama:          w.ama || '',
+      id:         w.id,
+      eponimo:    w.eponimo || '',
+      onoma:      w.onoma || '',
+      eidikotita: w.eidikotita || '',
+      ergolabos:  w.ergolabos || '',
+      ama:        w.ama || '',
     }));
 
     document.getElementById('resultsLabel').textContent =
@@ -245,6 +297,16 @@
     renderResults(workers);
   }
 
+  function clearSearch() {
+    document.getElementById('searchEponimo').value = '';
+    document.getElementById('searchOnoma').value = '';
+    document.getElementById('searchErgolabos').value = '';
+    document.getElementById('resultsSection').style.display = 'none';
+    document.getElementById('emptyState').style.display = '';
+    qrCache = {};
+  }
+
+  // ── RENDER ──
   function renderResults(workers) {
     const grid = document.getElementById('workerGrid');
     grid.innerHTML = workers.map(w => `
@@ -254,14 +316,12 @@
             <div class="worker-name">${w.eponimo} ${w.onoma}</div>
             <div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">
               <span class="badge badge-yellow">${w.eidikotita || '—'}</span>
-              ${w.isMultiPhase ? '<span class="badge badge-green">MULTI</span>' : ''}
             </div>
           </div>
           <span class="badge badge-gray" style="font-size:0.55rem;flex-shrink:0">${w.id}</span>
         </div>
         <div class="worker-meta">
           ${w.ergolabos ? '<div>🏗 <strong>' + w.ergolabos + '</strong></div>' : ''}
-          ${w.defaultPhase ? '<div>📐 ' + w.defaultPhase + '</div>' : ''}
           ${w.ama ? '<div>🪪 ΑΜΑ: ' + w.ama + '</div>' : ''}
         </div>
         <div class="qr-area" id="qr-${w.id}">
@@ -278,33 +338,15 @@
     workers.forEach(w => generateAndShow(w));
   }
 
-  // ── QR & UTF-8 ENCODING ──
-  // Μετατροπή UTF-16 (JavaScript) σε UTF-8 για να μην βγαίνουν τα Ελληνικά "κινέζικα"
-  function utf16to8(str) {
-    let out = "", i, len, c;
-    len = str.length;
-    for(i = 0; i < len; i++) {
-        c = str.charCodeAt(i);
-        if ((c >= 0x0001) && (c <= 0x007F)) {
-            out += str.charAt(i);
-        } else if (c > 0x07FF) {
-            out += String.fromCharCode(0xE0 | ((c >> 12) & 0x0F));
-            out += String.fromCharCode(0x80 | ((c >>  6) & 0x3F));
-            out += String.fromCharCode(0x80 | ((c >>  0) & 0x3F));
-        } else {
-            out += String.fromCharCode(0xC0 | ((c >>  6) & 0x1F));
-            out += String.fromCharCode(0x80 | ((c >>  0) & 0x3F));
-        }
-    }
-    return out;
-  }
-
-  // Payload με ID, Ονοματεπώνυμο & Εργολάβο
+  // ── QR PAYLOAD ──
+  // Payload: only id, eponimo, onoma, eidikotita, ergolabos — encoded as UTF-8 bytes
   function buildPayload(w) {
     return JSON.stringify({
-      id: w.id,
-      n: `${w.eponimo || ''} ${w.onoma || ''}`.trim(),
-      e: w.ergolabos || ''
+      id:    w.id,
+      ep:    w.eponimo,
+      on:    w.onoma,
+      ei:    w.eidikotita,
+      erg:   w.ergolabos,
     });
   }
 
@@ -312,10 +354,18 @@
     if (qrCache[w.id]) return Promise.resolve(qrCache[w.id]);
     return new Promise((resolve, reject) => {
       try {
+        const payload = buildPayload(w);
+
+        // Encode payload to UTF-8 bytes so Greek characters are stored correctly
+        // and any standalone QR reader can decode them properly
+        const encoder = new TextEncoder(); // always UTF-8
+        const bytes = encoder.encode(payload);
+
         const qr = qrcode(0, 'M');
-        // Προσθέτουμε τη μετατροπή utf16to8
-        qr.addData(utf16to8(buildPayload(w))); 
+        // Pass raw byte array — qrcode-generator accepts Uint8Array for byte mode
+        qr.addData(bytes, 'Byte');
         qr.make();
+
         const SIZE = 400;
         const canvas = document.createElement('canvas');
         canvas.width = SIZE; canvas.height = SIZE;
@@ -326,7 +376,9 @@
         ctx.fillStyle = '#000';
         for (let r = 0; r < mc; r++)
           for (let c = 0; c < mc; c++)
-            if (qr.isDark(r, c)) ctx.fillRect(Math.floor(c*cs), Math.floor(r*cs), Math.ceil(cs), Math.ceil(cs));
+            if (qr.isDark(r, c))
+              ctx.fillRect(Math.floor(c*cs), Math.floor(r*cs), Math.ceil(cs), Math.ceil(cs));
+
         qrCache[w.id] = canvas.toDataURL('image/png');
         resolve(qrCache[w.id]);
       } catch(e) { reject(e); }
@@ -358,7 +410,7 @@
     const area = document.getElementById('printArea');
     area.innerHTML = `
       <div class="print-badge">
-        <div class="pb-site">⛑ SITE ACCESS BADGE${w.isMultiPhase ? ' · MULTI-PHASE' : ''}</div>
+        <div class="pb-site">⛑ SITE ACCESS BADGE</div>
         <div class="pb-name">${w.eponimo} ${w.onoma}</div>
         <div class="pb-trade">${w.eidikotita}${w.ergolabos ? ' · ' + w.ergolabos : ''}</div>
         <div class="pb-qr"><img src="${qrSrc}" width="200" height="200" style="image-rendering:pixelated"></div>
@@ -375,6 +427,8 @@
     t.classList.add('show'); clearTimeout(t._t);
     t._t = setTimeout(() => t.classList.remove('show'), 2800);
   }
+
+  init();
 </script>
 </body>
 </html>
