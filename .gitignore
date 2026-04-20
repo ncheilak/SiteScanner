@@ -1,6 +1,0 @@
-# Examples 1 and 2 demonstrate that only build artifacts, dependencies, and temp files should be in .gitignore
-# Source files like .html should not be ignored unless they are generated
-
-# Since only a source file (2-scanner-app-gr.html) was modified and no build artifacts, dependencies, or temp files were detected, the .gitignore remains empty
-
-# No changes needed - output nothing since only a source file was modified
