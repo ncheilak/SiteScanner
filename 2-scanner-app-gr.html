@@ -489,7 +489,8 @@
       onoma:        w.onoma,
       patronimo:    w.patronimo,
       eidikotita:   w.eidikotita,
-      fasi:         w.fasi,
+      defaultPhase: w.default_phase || '',
+      isMultiPhase: w.is_multi_phase || false,
       ergolabos:    w.ergolabos,
       afmErgolabou: w.afm_ergolabou,
     }));
@@ -524,13 +525,10 @@
     if (error) { console.error(error); return; }
     todayLog = (data || []).map(r => ({
       id:           r.worker_id,
-      eponimo:      r.eponimo,
-      onoma:        r.onoma,
-      eidikotita:   r.eidikotita,
-      ergolabos:    r.ergolabos,
       timeIn:       r.time_in,
       date:         r.log_date,
-      db_id:        r.id
+      db_id:        r.id,
+      fasi:         r.fasi || ''
     }));
     renderLog();
   }
@@ -540,13 +538,9 @@
     const { error } = await db.from('attendance_log').insert({
       worker_id:  entry.id,
       site_id:    currentSite.id,
-      eponimo:    entry.eponimo,
-      onoma:      entry.onoma,
-      eidikotita: entry.eidikotita,
-      ergolabos:  entry.ergolabos,
-      fasi:       entry.fasi || '',
       time_in:    entry.timeIn,
-      log_date:   entry.date
+      log_date:   entry.date,
+      fasi:       entry.fasi || ''
     });
     if (error) {
       console.error(error);
@@ -644,10 +638,32 @@
     }
 
     const dbRecord = workerDB.find(w => w.id === data.id);
+    
+    // Determine the phase to use
+    let phaseToUse = '';
+    if (dbRecord) {
+      if (dbRecord.isMultiPhase) {
+        // Worker can work in multiple phases - ask user for current phase
+        const userPhase = prompt(
+          `Ο εργαζόμενος ${dbRecord.eponimo} ${dbRecord.onoma} μπορεί να απασχοληθεί σε πολλαπλές φάσεις.\n\n` +
+          `Προεπιλεγμένη φάση: ${dbRecord.defaultPhase}\n\n` +
+          `Εισάγετε την τρέχουσα φάση (αφήστε κενό για προεπιλεγμένη):`,
+          dbRecord.defaultPhase
+        );
+        phaseToUse = (userPhase !== null && userPhase.trim() !== '') ? userPhase.trim() : dbRecord.defaultPhase;
+      } else {
+        // Use default phase
+        phaseToUse = dbRecord.defaultPhase;
+      }
+    } else {
+      // No record found, use phase from QR if available
+      phaseToUse = data.fasi || '';
+    }
+    
     const worker = dbRecord || {
       id: data.id, eponimo: data.fn || '?', onoma: data.ln || '?',
       eidikotita: data.trade || data.eidikotita || '?',
-      fasi: data.fasi || '', ergolabos: data.erg || data.ergolabos || '',
+      fasi: phaseToUse, ergolabos: data.erg || data.ergolabos || '',
       ama: data.ama || '', amka: data.amka || ''
     };
 
@@ -656,7 +672,7 @@
     const entry = {
       id: worker.id, eponimo: worker.eponimo || '', onoma: worker.onoma || '',
       ama: worker.ama || '', amka: worker.amka || '',
-      eidikotita: worker.eidikotita || '', fasi: worker.fasi || '',
+      eidikotita: worker.eidikotita || '', fasi: phaseToUse,
       ergolabos: worker.ergolabos || '', afmErgolabou: worker.afmErgolabou || '',
       timeIn, date: `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
     };
@@ -723,12 +739,29 @@
       showToast(`⚠ ${w.eponimo || ''} ${w.onoma || ''} — Ήδη καταγεγραμμένος στις ${existing.timeIn}`, '#e8600a');
       return;
     }
+    
+    // Determine the phase to use
+    let phaseToUse = '';
+    if (w.isMultiPhase) {
+      // Worker can work in multiple phases - ask user for current phase
+      const userPhase = prompt(
+        `Ο εργαζόμενος ${w.eponimo} ${w.onoma} μπορεί να απασχοληθεί σε πολλαπλές φάσεις.\\n\\n` +
+        `Προεπιλεγμένη φάση: ${w.defaultPhase}\\n\\n` +
+        `Εισάγετε την τρέχουσα φάση (αφήστε κενό για προεπιλεγμένη):`,
+        w.defaultPhase
+      );
+      phaseToUse = (userPhase !== null && userPhase.trim() !== '') ? userPhase.trim() : w.defaultPhase;
+    } else {
+      // Use default phase
+      phaseToUse = w.defaultPhase;
+    }
+    
     const now = new Date();
     const timeIn = now.toTimeString().slice(0, 5);
     const entry = {
       id: w.id, eponimo: w.eponimo || '', onoma: w.onoma || '',
       ama: w.ama || '', amka: w.amka || '',
-      eidikotita: w.eidikotita || '', fasi: w.fasi || '',
+      eidikotita: w.eidikotita || '', fasi: phaseToUse,
       ergolabos: w.ergolabos || '', afmErgolabou: w.afmErgolabou || '',
       timeIn, date: `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
     };
@@ -740,7 +773,7 @@
     document.getElementById('manualResults').innerHTML = '';
     document.getElementById('manualPanel').classList.remove('open');
     showToast(`✓ ${w.eponimo || ''} ${w.onoma || ''} — Παρουσία: ${timeIn}`);
-    showFlash('success', '✅', (w.eponimo||'') + ' ' + (w.onoma||''), (w.eidikotita||'') + (w.fasi ? ' | ' + w.fasi : ''), 'Παρουσία: ' + timeIn);
+    showFlash('success', '✅', (w.eponimo||'') + ' ' + (w.onoma||''), (w.eidikotita||'') + (phaseToUse ? ' | ' + phaseToUse : ''), 'Παρουσία: ' + timeIn);
     if (navigator.vibrate) navigator.vibrate(80);
   }
 
@@ -748,19 +781,34 @@
   function renderLog() {
     const q = (document.getElementById('logSearch')?.value || '').toLowerCase();
     const list = document.getElementById('logList');
-    const filtered = todayLog.filter(e =>
+    
+    // Enrich todayLog with worker details from workerDB for display
+    const enrichedLog = todayLog.map(e => {
+      const w = workerDB.find(x => x.id === e.id);
+      return {
+        ...e,
+        eponimo: w ? w.eponimo : (e.eponimo || ''),
+        onoma: w ? w.onoma : (e.onoma || ''),
+        eidikotita: w ? w.eidikotita : (e.eidikotita || ''),
+        ergolabos: w ? w.ergolabos : (e.ergolabos || '')
+      };
+    });
+    
+    const filtered = enrichedLog.filter(e =>
       (e.eponimo + ' ' + e.onoma + ' ' + e.eidikotita + ' ' + e.ergolabos).toLowerCase().includes(q)
     );
     document.getElementById('logTotal').textContent = todayLog.length;
-    document.getElementById('logTrades').textContent = new Set(todayLog.map(e => e.eidikotita)).size;
-    document.getElementById('logCompanies').textContent = new Set(todayLog.map(e => e.ergolabos).filter(Boolean)).size;
+    document.getElementById('logTrades').textContent = new Set(enrichedLog.map(e => e.eidikotita)).size;
+    document.getElementById('logCompanies').textContent = new Set(enrichedLog.map(e => e.ergolabos).filter(Boolean)).size;
     if (filtered.length === 0) {
       list.innerHTML = '<div class="empty-log">Δεν υπάρχουν παρουσίες ακόμα.<br>Σαρώστε badges στην καρτέλα Σάρωσης.</div>';
       return;
     }
-    list.innerHTML = filtered.map((e, i) => `
+    list.innerHTML = filtered.map((e, i) => {
+      const origIdx = todayLog.findIndex(t => t.db_id === e.db_id);
+      return `
       <div class="log-item">
-        <div class="log-num">${todayLog.indexOf(e) + 1}</div>
+        <div class="log-num">${origIdx + 1}</div>
         <div class="log-info">
           <div class="log-name">${e.eponimo || ''} ${e.onoma || ''}</div>
           <div class="log-sub">
@@ -772,14 +820,29 @@
         <div class="log-time">${e.timeIn}</div>
         <button class="log-delete" onclick="deleteEntry(${e.db_id})" title="Διαγραφή εγγραφής">✕</button>
       </div>
-    `).join('');
+    `}).join('');
   }
 
   // ── EXPORT CSV ──
   function exportCSV() {
     if (todayLog.length === 0) { showToast('Δεν υπάρχουν εγγραφές για εξαγωγή', '#e8600a'); return; }
+    
+    // Enrich with worker details from workerDB
+    const enrichedLog = todayLog.map(e => {
+      const w = workerDB.find(x => x.id === e.id);
+      return {
+        ...e,
+        eponimo: w ? w.eponimo : e.eponimo,
+        onoma: w ? w.onoma : e.onoma,
+        ama: w ? w.ama : e.ama,
+        amka: w ? w.amka : e.amka,
+        eidikotita: w ? w.eidikotita : e.eidikotita,
+        ergolabos: w ? w.ergolabos : e.ergolabos
+      };
+    });
+    
     const headers = ['#','Εργοτάξιο','Ημερομηνία','Ώρα Εισόδου','Επώνυμο','Όνομα','Α.Μ.Α.','Α.Μ.Κ.Α.','Ειδικότητα','Φάση','Εργολάβος','ID'];
-    const rows = todayLog.map((e, i) => [
+    const rows = enrichedLog.map((e, i) => [
       i + 1, currentSite?.name || '', e.date, e.timeIn,
       e.eponimo, e.onoma, e.ama, e.amka,
       e.eidikotita, e.fasi, e.ergolabos, e.id
