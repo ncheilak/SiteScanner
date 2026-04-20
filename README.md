@@ -11,7 +11,7 @@
 |---|--------|------------|
 | — | `index.html` | Κεντρική σελίδα επιλογής εργαλείου |
 | 01 | `0-worker-compiler-gr.html` | Καταχώρηση & διαχείριση εργαζομένων |
-| 02 | `1-qr-generator-gr.html` | Δημιουργία QR badges ανά εργαζόμενο |
+| 02 | `1-qr-generator-gr.html` | Αναζήτηση εργαζομένων & δημιουργία QR badges |
 | 03 | `3-scanner-app-gr.html` | Σάρωση QR για καταγραφή παρουσίας |
 | 04 | `2-attendance-gr.html` | Παρουσιολόγιο με εξαγωγή CSV |
 
@@ -97,13 +97,16 @@ Browser (HTML/JS)
         (default_phase + is_multi_phase flag)
 
 2. QR Generator
-   └── Αναζήτηση εργαζομένου → δημιουργία QR badge
-        QR payload: { id, fn, ln, trade, erg, defaultPhase, isMultiPhase }
+   └── Αναζήτηση εργαζομένου (Επώνυμο / Όνομα / Εργολάβος dropdown)
+        → 10 αποτελέσματα ανά σελίδα με pagination
+        → δημιουργία QR badge (UTF-8 Byte mode)
+        QR payload: { id, ep, on, ei, erg }
+        (ep=επώνυμο, on=όνομα, ei=ειδικότητα, erg=εργολάβος)
 
 3. Scanner (σε κινητό)
    └── Σάρωση QR badge
-        ├── is_multi_phase = false → check-in με default_phase αυτόματα
-        └── is_multi_phase = true  → modal για χειροκίνητη επιλογή φάσης
+        → ανάγνωση payload { id, ep, on, ei, erg }
+        → χειροκίνητη επιλογή φάσης κατασκευής (modal)
         └── Εγγραφή στο attendance_log
 
 4. Παρουσιολόγιο
@@ -192,6 +195,19 @@ eidikotita, defaultPhase, isMultiPhase, ergolabos, afmErgolabou
 Τιμές για `isMultiPhase`: `true` / `false`
 
 Κατεβάστε το πρότυπο απευθείας από το εργαλείο Καταχώρησης Εργαζομένων.
+
+---
+
+## QR Generator — Λεπτομέρειες
+
+- **Αναζήτηση** με τρία ανεξάρτητα πεδία: Επώνυμο (text), Όνομα (text), Εργολάβος (dropdown από τη βάση)
+- **Pagination**: 10 αποτελέσματα ανά σελίδα, server-side με Supabase `.range()` + count query
+- **QR encoding**: UTF-8 Byte mode — τα ελληνικά αποθηκεύονται σωστά και διαβάζονται από οποιονδήποτε QR reader
+- **QR payload** (μόνο τα απαραίτητα για το check-in):
+
+```json
+{ "id": "W-1001", "ep": "Παπαδόπουλος", "on": "Γιάννης", "ei": "Εργάτης", "erg": "Εργολάβος ΑΕ" }
+```
 
 ---
 
