@@ -44,7 +44,6 @@
   }
   .tab-btn.active, .tab-btn:hover { background: var(--black); color: var(--yellow); }
 
-  /* DB Status bar */
   .db-bar {
     background: var(--gray); border-bottom: 1px solid var(--gray3);
     padding: 7px 28px; display: flex; align-items: center; gap: 12px;
@@ -58,7 +57,6 @@
   .page { display: none; max-width: 1200px; margin: 0 auto; padding: 28px 20px; }
   .page.active { display: block; }
 
-  /* Cards */
   .card { background: var(--gray); border: 1px solid var(--gray3); border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
   .card-header {
     background: var(--gray2); padding: 10px 18px;
@@ -69,7 +67,6 @@
   }
   .card-body { padding: 18px; }
 
-  /* Buttons */
   .btn {
     border: none; border-radius: 2px; cursor: pointer;
     font-family: 'Bebas Neue', sans-serif; letter-spacing: 2px;
@@ -138,7 +135,7 @@
   .filters .spacer { flex: 1; }
 
   .att-table-wrap { overflow-x: auto; }
-  table { width: 100%; border-collapse: collapse; font-size: 0.83rem; min-width: 600px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.83rem; min-width: 700px; }
   thead th {
     background: var(--gray2); padding: 8px 10px; text-align: left;
     font-family: 'IBM Plex Mono', monospace; font-size: 0.58rem; font-weight: 600;
@@ -168,11 +165,9 @@
   .site-stat-row:last-child { border-bottom: none; }
   .site-stat-row span { color: var(--yellow); font-weight: 600; }
 
-  /* Empty states */
   .empty { text-align: center; padding: 50px 20px; color: var(--gray4); font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem; }
   .empty .icon { font-size: 2.5rem; margin-bottom: 10px; }
 
-  /* Toast */
   .toast {
     position: fixed; bottom: 24px; right: 24px;
     background: var(--green); color: #fff;
@@ -185,11 +180,9 @@
   }
   .toast.show { opacity: 1; transform: translateY(0); }
 
-  /* Spinner */
   .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid var(--gray3); border-top-color: var(--yellow); border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 5px; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
-  /* Print */
   @media print {
     body * { visibility: hidden; }
     #printArea, #printArea * { visibility: visible; }
@@ -284,14 +277,16 @@
               <th>Ώρα Εισόδου</th>
               <th>Επώνυμο</th>
               <th>Όνομα</th>
+              <th>Πατρώνυμο</th>
               <th>Ειδικότητα</th>
-              <th>Φάση</th>
+              <th>Φάση (check-in)</th>
               <th>Εργολάβος</th>
+              <th>Α.Μ.Α.</th>
               <th>Worker ID</th>
             </tr>
           </thead>
           <tbody id="attBody">
-            <tr><td colspan="10" class="empty">Φόρτωση…</td></tr>
+            <tr><td colspan="12" class="empty">Φόρτωση…</td></tr>
           </tbody>
         </table>
       </div>
@@ -340,8 +335,8 @@
   // ── STATE ──
   let workers    = [];
   let sites      = [];
-  let attRecords = []; // raw from Supabase
-  let qrCache    = {}; // worker.id → dataURL
+  let attRecords = [];
+  let qrCache    = {};
 
   // ── INIT ──
   async function loadAll() {
@@ -386,10 +381,14 @@
       id:           w.id,
       ama:          w.ama || '',
       amka:         w.amka || '',
+      afm:          w.afm || '',
+      arAdErgasias: w.ar_ad_ergasias || '',
       eponimo:      w.eponimo || '',
       onoma:        w.onoma || '',
+      patronimo:    w.patronimo || '',
       eidikotita:   w.eidikotita || '',
-      fasi:         w.fasi || '',
+      defaultPhase: w.default_phase || '',
+      isMultiPhase: w.is_multi_phase || false,
       ergolabos:    w.ergolabos || '',
       afmErgolabou: w.afm_ergolabou || '',
       registeredAt: w.registered_at || '',
@@ -407,7 +406,6 @@
   // ── POPULATE SITE FILTER ──
   function populateSiteFilter() {
     const sel = document.getElementById('filterSite');
-    // Keep first option
     sel.innerHTML = '<option value="">— Όλα τα Εργοτάξια —</option>';
     sites.forEach(s => {
       const opt = document.createElement('option');
@@ -417,18 +415,20 @@
   }
 
   // ── QR GENERATION ──
+  // Payload includes isMultiPhase and defaultPhase so the scanner knows
   function generateQRDataUrl(worker) {
     return new Promise((resolve, reject) => {
       try {
         const payload = JSON.stringify({
-          id:    worker.id,
-          fn:    worker.eponimo,
-          ln:    worker.onoma,
-          trade: worker.eidikotita,
-          fasi:  worker.fasi,
-          erg:   worker.ergolabos,
-          ama:   worker.ama,
-          amka:  worker.amka,
+          id:           worker.id,
+          fn:           worker.eponimo,
+          ln:           worker.onoma,
+          trade:        worker.eidikotita,
+          defaultPhase: worker.defaultPhase,
+          isMultiPhase: worker.isMultiPhase,
+          erg:          worker.ergolabos,
+          ama:          worker.ama,
+          amka:         worker.amka,
         });
         const qr = qrcode(0, 'M');
         qr.addData(payload);
@@ -472,19 +472,21 @@
       return;
     }
 
-    // Render cards without QR first (fast)
     grid.innerHTML = filtered.map(w => `
       <div class="worker-card" id="wcard-${w.id}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
           <div>
             <div class="worker-name">${w.eponimo} ${w.onoma}</div>
-            <span class="badge badge-yellow" style="margin-top:4px">${w.eidikotita || '—'}</span>
+            <div style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+              <span class="badge badge-yellow">${w.eidikotita || '—'}</span>
+              ${w.isMultiPhase ? '<span class="badge badge-green">MULTI</span>' : ''}
+            </div>
           </div>
           <span class="badge badge-gray" style="font-size:0.58rem;flex-shrink:0">${w.id}</span>
         </div>
         <div class="worker-meta">
           ${w.ergolabos ? '🏗 ' + w.ergolabos + '<br>' : ''}
-          ${w.fasi ? '📐 ' + w.fasi + '<br>' : ''}
+          ${w.defaultPhase ? '📐 ' + w.defaultPhase + '<br>' : ''}
           ${w.ama ? '🪪 ΑΜΑ: ' + w.ama : ''}
         </div>
         <div class="qr-thumb" id="qr-${w.id}">
@@ -499,7 +501,6 @@
       </div>
     `).join('');
 
-    // Generate QR codes asynchronously
     for (const w of filtered) {
       try {
         const url = await getQR(w);
@@ -535,7 +536,7 @@
     const area = document.getElementById('printArea');
     area.innerHTML = `
       <div class="print-badge">
-        <div class="pb-site">⛑ SITE ACCESS BADGE</div>
+        <div class="pb-site">⛑ SITE ACCESS BADGE${w.isMultiPhase ? ' · MULTI-PHASE' : ''}</div>
         <div class="pb-name">${w.eponimo} ${w.onoma}</div>
         <div class="pb-trade">${w.eidikotita}${w.ergolabos ? ' · ' + w.ergolabos : ''}</div>
         <div class="pb-qr"><img src="${qrSrc}" width="200" height="200" style="image-rendering:pixelated"></div>
@@ -559,7 +560,7 @@
       const div = document.createElement('div');
       div.className = 'print-badge';
       div.innerHTML = `
-        <div class="pb-site">⛑ SITE ACCESS BADGE</div>
+        <div class="pb-site">⛑ SITE ACCESS BADGE${w.isMultiPhase ? ' · MULTI-PHASE' : ''}</div>
         <div class="pb-name">${w.eponimo} ${w.onoma}</div>
         <div class="pb-trade">${w.eidikotita}${w.ergolabos ? ' · ' + w.ergolabos : ''}</div>
         <div class="pb-qr"><img src="${qrSrc}" width="200" height="200" style="image-rendering:pixelated"></div>
@@ -576,14 +577,38 @@
   }
 
   // ── LOAD ATTENDANCE ──
+  // JOIN: attendance_log → workers (static info) + sites (name)
   async function loadAttendance() {
     const siteId   = document.getElementById('filterSite')?.value;
     const dateFrom = document.getElementById('filterDateFrom')?.value;
     const dateTo   = document.getElementById('filterDateTo')?.value;
 
+    // Select attendance fields + join workers for static info + join sites for name
     let query = db
       .from('attendance_log')
-      .select('*, sites(name)')
+      .select(`
+        id,
+        worker_id,
+        site_id,
+        time_in,
+        log_date,
+        fasi,
+        created_at,
+        sites ( name ),
+        workers (
+          eponimo,
+          onoma,
+          patronimo,
+          eidikotita,
+          ergolabos,
+          ama,
+          amka,
+          afm,
+          afm_ergolabou,
+          default_phase,
+          is_multi_phase
+        )
+      `)
       .order('log_date', { ascending: false })
       .order('created_at', { ascending: false });
 
@@ -592,60 +617,47 @@
     if (dateTo)   query = query.lte('log_date', dateTo);
 
     const { data, error } = await query.limit(500);
-    if (error) { showToast('⚠ Σφάλμα φόρτωσης παρουσιών', '#e8600a'); return; }
-    
-    // Φορτώνουμε τους workers για να κάνουμε join τα στοιχεία τους
-    const { data: workersData } = await db.from('workers').select('id, eponimo, onoma, eidikotita, ergolabos, default_phase, is_multi_phase');
-    const workersMap = {};
-    if (workersData) {
-      workersData.forEach(w => {
-        workersMap[w.id] = w;
-      });
-    }
-    
-    // Ενώνουμε τα δεδομένα των παρουσιών με τα στοιχεία των workers
-    attRecords = (data || []).map(r => {
-      const worker = workersMap[r.worker_id];
-      return {
-        ...r,
-        eponimo: worker?.eponimo || '—',
-        onoma: worker?.onoma || '—',
-        eidikotita: worker?.eidikotita || '—',
-        ergolabos: worker?.ergolabos || '—',
-        fasi: r.fasi || worker?.default_phase || '—'
-      };
-    });
-    
+    if (error) { showToast('⚠ Σφάλμα φόρτωσης παρουσιών: ' + error.message, '#e8600a'); return; }
+    attRecords = data || [];
     renderAttendance();
   }
 
   function renderAttendance() {
     const q = (document.getElementById('filterWorker')?.value || '').toLowerCase();
-    const filtered = attRecords.filter(r =>
-      (r.eponimo + ' ' + r.onoma + ' ' + r.eidikotita + ' ' + r.ergolabos + ' ' + (r.worker_id||'')).toLowerCase().includes(q)
-    );
+    const filtered = attRecords.filter(r => {
+      // Search across joined worker fields
+      const w = r.workers || {};
+      const searchStr = [
+        w.eponimo, w.onoma, w.eidikotita, w.ergolabos, r.worker_id, r.fasi
+      ].join(' ').toLowerCase();
+      return searchStr.includes(q);
+    });
 
     document.getElementById('attCount').textContent = `${filtered.length} εγγραφές`;
 
     if (filtered.length === 0) {
-      document.getElementById('attBody').innerHTML = '<tr><td colspan="10"><div class="empty">Δεν βρέθηκαν παρουσίες.</div></td></tr>';
+      document.getElementById('attBody').innerHTML =
+        '<tr><td colspan="12"><div class="empty">Δεν βρέθηκαν παρουσίες.</div></td></tr>';
       return;
     }
 
-    document.getElementById('attBody').innerHTML = filtered.map((r, i) => `
-      <tr>
+    document.getElementById('attBody').innerHTML = filtered.map((r, i) => {
+      const w = r.workers || {};
+      return `<tr>
         <td class="td-mono">${i + 1}</td>
         <td><span class="badge badge-orange">${r.sites?.name || '—'}</span></td>
         <td class="td-mono">${r.log_date || '—'}</td>
         <td class="td-time">${r.time_in || '—'}</td>
-        <td style="font-weight:600">${r.eponimo || '—'}</td>
-        <td>${r.onoma || '—'}</td>
-        <td><span class="badge badge-yellow">${r.eidikotita || '—'}</span></td>
+        <td style="font-weight:600">${w.eponimo || '—'}</td>
+        <td>${w.onoma || '—'}</td>
+        <td class="td-mono" style="font-size:0.72rem;color:var(--gray4)">${w.patronimo || '—'}</td>
+        <td><span class="badge badge-yellow">${w.eidikotita || '—'}</span></td>
         <td class="td-mono" style="font-size:0.7rem">${r.fasi || '—'}</td>
-        <td class="td-mono">${r.ergolabos || '—'}</td>
+        <td class="td-mono">${w.ergolabos || '—'}</td>
+        <td class="td-mono" style="font-size:0.7rem">${w.ama || '—'}</td>
         <td class="td-mono" style="color:var(--gray4)">${r.worker_id || '—'}</td>
-      </tr>
-    `).join('');
+      </tr>`;
+    }).join('');
   }
 
   function setToday() {
@@ -658,16 +670,30 @@
 
   function exportAttCSV() {
     const q = (document.getElementById('filterWorker')?.value || '').toLowerCase();
-    const filtered = attRecords.filter(r =>
-      (r.eponimo + ' ' + r.onoma + ' ' + r.eidikotita + ' ' + r.ergolabos + ' ' + (r.worker_id||'')).toLowerCase().includes(q)
-    );
+    const filtered = attRecords.filter(r => {
+      const w = r.workers || {};
+      return [w.eponimo, w.onoma, w.eidikotita, w.ergolabos, r.worker_id, r.fasi].join(' ').toLowerCase().includes(q);
+    });
     if (!filtered.length) { showToast('Δεν υπάρχουν εγγραφές', '#e8600a'); return; }
-    const headers = ['#','Εργοτάξιο','Ημερομηνία','Ώρα Εισόδου','Επώνυμο','Όνομα','Ειδικότητα','Φάση','Εργολάβος','Worker ID'];
-    const rows = filtered.map((r, i) => [
-      i+1, r.sites?.name||'', r.log_date||'', r.time_in||'',
-      r.eponimo||'', r.onoma||'', r.eidikotita||'',
-      r.fasi||'', r.ergolabos||'', r.worker_id||''
-    ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(','));
+
+    const headers = ['#','Εργοτάξιο','Ημερομηνία','Ώρα Εισόδου','Επώνυμο','Όνομα','Πατρώνυμο','Ειδικότητα','Φάση (check-in)','Εργολάβος','Α.Μ.Α.','Worker ID'];
+    const rows = filtered.map((r, i) => {
+      const w = r.workers || {};
+      return [
+        i+1,
+        r.sites?.name || '',
+        r.log_date || '',
+        r.time_in || '',
+        w.eponimo || '',
+        w.onoma || '',
+        w.patronimo || '',
+        w.eidikotita || '',
+        r.fasi || '',
+        w.ergolabos || '',
+        w.ama || '',
+        r.worker_id || ''
+      ].map(v => `"${String(v).replace(/"/g,'""')}"`).join(',');
+    });
     const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const a = document.createElement('a');
@@ -687,28 +713,25 @@
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
-    // Today's check-ins
     const { data: todayData } = await db
       .from('attendance_log')
-      .select('site_id, sites(name), eidikotita, ergolabos, worker_id')
+      .select('site_id, sites(name), fasi, worker_id, workers(eidikotita, ergolabos)')
       .eq('log_date', today);
 
     const todayLog = todayData || [];
 
-    // Total workers
     document.getElementById('sTotWorkers').textContent = workers.length;
     document.getElementById('sTotCheckins').textContent = todayLog.length;
     document.getElementById('sTotSites').textContent = sites.length;
     document.getElementById('sTotCompanies').textContent = new Set(workers.map(w => w.ergolabos).filter(Boolean)).size;
 
-    // Per-site stats today
     const siteStatsGrid = document.getElementById('siteStatsGrid');
     if (!sites.length) { siteStatsGrid.innerHTML = '<div class="empty">Δεν βρέθηκαν εργοτάξια.</div>'; }
     else {
       siteStatsGrid.innerHTML = sites.map(s => {
         const logs = todayLog.filter(r => r.site_id === s.id);
-        const trades = new Set(logs.map(r => r.eidikotita).filter(Boolean)).size;
-        const companies = new Set(logs.map(r => r.ergolabos).filter(Boolean)).size;
+        const trades = new Set(logs.map(r => r.workers?.eidikotita).filter(Boolean)).size;
+        const companies = new Set(logs.map(r => r.workers?.ergolabos).filter(Boolean)).size;
         return `
           <div class="site-stat-card">
             <div class="site-stat-name">🏗 ${s.name}</div>
@@ -719,7 +742,6 @@
       }).join('');
     }
 
-    // Last 7 days
     const d7 = new Date(); d7.setDate(d7.getDate() - 6);
     const d7str = d7.toISOString().slice(0, 10);
     const { data: weekData } = await db
@@ -754,7 +776,7 @@
   }
 
   // ── START ──
-  setToday(); // pre-fill date filter with today
+  setToday();
   loadAll();
 </script>
 </body>

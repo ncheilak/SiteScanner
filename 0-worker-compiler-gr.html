@@ -14,17 +14,22 @@
   .logo{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;letter-spacing:3px}
   .logo em{color:var(--orange);font-style:normal}
   .logo sub{font-size:0.65rem;letter-spacing:1px;opacity:0.6;vertical-align:middle;margin-left:6px;font-family:'IBM Plex Mono',monospace}
-  .shell{display:grid;grid-template-columns:320px 1fr;height:calc(100vh - 54px)}
+  .shell{display:grid;grid-template-columns:340px 1fr;height:calc(100vh - 54px)}
   @media(max-width:750px){.shell{grid-template-columns:1fr;grid-template-rows:auto 1fr}}
   .sidebar{background:var(--gray);border-right:1px solid var(--gray3);display:flex;flex-direction:column;overflow-y:auto}
   .sidebar-section{border-bottom:1px solid var(--gray3);padding:12px 14px}
   .sec-label{font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;color:var(--yellow);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:8px}
   .form-group{margin-bottom:7px}
   .form-group label{display:block;font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;color:var(--gray5);text-transform:uppercase;letter-spacing:0.8px;margin-bottom:3px}
+  .form-group label em{color:var(--orange);font-style:normal}
   .form-group input,.form-group select{width:100%;background:var(--black);border:1px solid var(--gray4);border-radius:2px;color:var(--white);font-family:'IBM Plex Sans',sans-serif;font-size:0.82rem;padding:6px 8px;outline:none;transition:border-color 0.15s}
   .form-group input:focus,.form-group select:focus{border-color:var(--yellow)}
   select option{background:var(--black)}
   .form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .checkbox-row{display:flex;align-items:center;gap:8px;padding:6px 0}
+  .checkbox-row label{font-family:'IBM Plex Mono',monospace;font-size:0.65rem;font-weight:600;color:var(--white);text-transform:uppercase;letter-spacing:0.8px;cursor:pointer;margin-bottom:0}
+  .checkbox-row input[type="checkbox"]{width:16px;height:16px;flex-shrink:0}
+  .multi-hint{font-family:'IBM Plex Mono',monospace;font-size:0.56rem;color:var(--gray5);line-height:1.5;margin-top:3px;padding-left:24px}
   .btn{border:none;border-radius:2px;cursor:pointer;font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;transition:opacity 0.15s,transform 0.1s;white-space:nowrap}
   .btn:active{transform:scale(0.97)}
   .btn-yellow{background:var(--yellow);color:var(--black)}.btn-yellow:hover{background:var(--yellow-dk)}
@@ -52,7 +57,7 @@
   .count-badge{font-family:'IBM Plex Mono',monospace;font-size:0.68rem;color:var(--gray5);padding:4px 10px;background:var(--black);border:1px solid var(--gray4);border-radius:2px}
   .count-badge span{color:var(--yellow);font-weight:600}
   .table-wrap{flex:1;overflow:auto;position:relative}
-  table{width:100%;border-collapse:collapse;font-size:0.8rem;min-width:1200px}
+  table{width:100%;border-collapse:collapse;font-size:0.8rem;min-width:1400px}
   thead{position:sticky;top:0;z-index:10}
   thead th{background:var(--gray2);padding:7px 8px;text-align:left;font-family:'IBM Plex Mono',monospace;font-size:0.55rem;font-weight:600;color:var(--gray5);text-transform:uppercase;letter-spacing:0.8px;border-bottom:2px solid var(--orange);white-space:nowrap}
   thead th.req::after{content:' *';color:var(--orange)}
@@ -70,6 +75,7 @@
   .cell-select:focus{background:var(--black);border-color:var(--yellow)}
   .cell-select option{background:var(--black)}
   .cell-select.invalid{border-color:var(--red)!important;background:rgba(204,51,51,0.08)}
+  .cell-check{display:flex;justify-content:center;align-items:center;height:100%}
   .row-num{font-family:'IBM Plex Mono',monospace;font-size:0.62rem;color:var(--gray5)}
   .del-btn{background:none;border:none;color:var(--gray5);cursor:pointer;font-size:1rem;padding:2px 5px;border-radius:2px;transition:color 0.1s,background 0.1s}
   .del-btn:hover{color:var(--red);background:rgba(204,51,51,0.12)}
@@ -95,6 +101,7 @@
   .db-bar .db-status-txt{flex:1}
   .db-bar .db-status-txt.ok{color:var(--green)}
   .db-bar .db-status-txt.err{color:var(--red)}
+  .multi-badge{display:inline-block;background:rgba(31,166,68,0.15);border:1px solid rgba(31,166,68,0.4);color:#5de07a;font-family:'IBM Plex Mono',monospace;font-size:0.5rem;font-weight:600;letter-spacing:0.5px;padding:1px 5px;border-radius:2px;text-transform:uppercase;vertical-align:middle;margin-left:4px}
 </style>
 </head>
 <body>
@@ -117,23 +124,25 @@
   <div class="sidebar">
     <div class="sidebar-section">
       <div class="sec-label">⛑ Προσθήκη Εργαζομένου</div>
+
       <div class="form-row">
-        <div class="form-group"><label>Α.Μ.Α. *</label><input type="text" id="ama" placeholder="000000000" onkeydown="enterAdd(event)"></div>
-        <div class="form-group"><label>Α.Μ.Κ.Α. *</label><input type="text" id="amka" placeholder="00000000000" onkeydown="enterAdd(event)"></div>
+        <div class="form-group"><label>Α.Μ.Α. <em>*</em></label><input type="text" id="ama" placeholder="000000000" onkeydown="enterAdd(event)"></div>
+        <div class="form-group"><label>Α.Μ.Κ.Α. <em>*</em></label><input type="text" id="amka" placeholder="00000000000" onkeydown="enterAdd(event)"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Α.Φ.Μ.</label><input type="text" id="afm" placeholder="000000000" onkeydown="enterAdd(event)"></div>
-        <div class="form-group"><label>ΑΡ. ΑΔ. ΕΡΓΑΣΙΑΣ</label><input type="text" id="arAd" placeholder="000000" onkeydown="enterAdd(event)"></div>
+        <div class="form-group"><label>Α.Φ.Μ. <em>*</em></label><input type="text" id="afm" placeholder="000000000" onkeydown="enterAdd(event)"></div>
+        <div class="form-group"><label>ΑΡ. ΑΔ. ΕΡΓΑΣΙΑΣ <em>*</em></label><input type="text" id="arAd" placeholder="000000" onkeydown="enterAdd(event)"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>ΕΠΩΝΥΜΟ *</label><input type="text" id="eponimo" placeholder="Παπαδόπουλος" onkeydown="enterAdd(event)"></div>
-        <div class="form-group"><label>ΟΝΟΜΑ *</label><input type="text" id="onoma" placeholder="Γιώργης" onkeydown="enterAdd(event)"></div>
+        <div class="form-group"><label>ΕΠΩΝΥΜΟ <em>*</em></label><input type="text" id="eponimo" placeholder="Παπαδόπουλος" onkeydown="enterAdd(event)"></div>
+        <div class="form-group"><label>ΟΝΟΜΑ <em>*</em></label><input type="text" id="onoma" placeholder="Γιώργης" onkeydown="enterAdd(event)"></div>
       </div>
-      <div class="form-group"><label>ΠΑΤΡΩΝΥΜΟ</label><input type="text" id="patronimo" placeholder="Νικόλαος" onkeydown="enterAdd(event)"></div>
-      <div class="form-group"><label>ΕΙΔΙΚΟΤΗΤΑ *</label><input type="text" id="eidikotita" placeholder="π.χ. Χτίστης, Σιδηρουργός…" onkeydown="enterAdd(event)"></div>
+      <div class="form-group"><label>ΠΑΤΡΩΝΥΜΟ <em>*</em></label><input type="text" id="patronimo" placeholder="Νικόλαος" onkeydown="enterAdd(event)"></div>
+      <div class="form-group"><label>ΕΙΔΙΚΟΤΗΤΑ <em>*</em></label><input type="text" id="eidikotita" placeholder="π.χ. Χτίστης, Σιδηρουργός…" onkeydown="enterAdd(event)"></div>
+
       <div class="form-group">
-        <label>ΠΡΟΕΠΙΛΕΓΜΕΝΗ ΦΑΣΗ</label>
-        <select id="fasi">
+        <label>ΦΑΣΗ ΚΑΤΑΣΚΕΥΗΣ (DEFAULT) <em>*</em></label>
+        <select id="defaultPhase">
           <option value="">— Επιλογή —</option>
           <option>01: Εκσκαφές &amp; Οικοδομικός Σκελετός</option>
           <option>02: Τοιχοποιίες</option>
@@ -143,12 +152,17 @@
           <option>06: Εργασίες Εγκαταστάσεων</option>
         </select>
       </div>
-      <div class="form-group" style="display:flex;align-items:center;gap:8px;margin-top:8px">
-        <input type="checkbox" id="isMultiPhase">
-        <label for="isMultiPhase" style="font-family:'IBM Plex Sans',sans-serif;font-size:0.75rem;color:var(--white);text-transform:none;letter-spacing:0;margin:0;cursor:pointer">Ο εργαζόμενος μπορεί να απασχοληθεί σε πολλαπλές Φάσεις</label>
+
+      <div class="form-group">
+        <div class="checkbox-row">
+          <input type="checkbox" id="isMultiPhase">
+          <label for="isMultiPhase">Εργαζόμενος Πολλαπλών Φάσεων</label>
+        </div>
+        <div class="multi-hint">✦ Αν ενεργοποιηθεί, ο σαρωτής θα ζητά χειροκίνητη επιλογή φάσης κατά το check-in</div>
       </div>
-      <div class="form-group"><label>ΕΡΓΟΛΑΒΟΣ</label><input type="text" id="ergolabos" placeholder="Επωνυμία εργολάβου" onkeydown="enterAdd(event)"></div>
-      <div class="form-group"><label>ΑΦΜ ΕΡΓΟΛΑΒΟΥ</label><input type="text" id="afmErg" placeholder="000000000" onkeydown="enterAdd(event)"></div>
+
+      <div class="form-group"><label>ΕΡΓΟΛΑΒΟΣ <em>*</em></label><input type="text" id="ergolabos" placeholder="Επωνυμία εργολάβου" onkeydown="enterAdd(event)"></div>
+      <div class="form-group"><label>ΑΦΜ ΕΡΓΟΛΑΒΟΥ <em>*</em></label><input type="text" id="afmErg" placeholder="000000000" onkeydown="enterAdd(event)"></div>
     </div>
     <div class="add-btn-wrap">
       <button class="btn btn-yellow btn-lg" onclick="addWorker()">+ Προσθήκη στη Λίστα</button>
@@ -167,7 +181,7 @@
           <input type="file" id="csvFile" accept=".csv" style="display:none" onchange="handleCSVFile(event)">
         </div>
       </div>
-      <div class="template-note"><strong>Στήλες:</strong> ama · amka · afm · arAdErgasias · eponimo · onoma · patronimo · eidikotita · fasi · ergolabos · afmErgolabou</div>
+      <div class="template-note"><strong>Στήλες:</strong> ama · amka · afm · arAdErgasias · eponimo · onoma · patronimo · eidikotita · defaultPhase · isMultiPhase · ergolabos · afmErgolabou</div>
     </div>
   </div>
 
@@ -188,16 +202,16 @@
             <th>#</th>
             <th class="req">Α.Μ.Α.</th>
             <th class="req">Α.Μ.Κ.Α.</th>
-            <th>Α.Φ.Μ.</th>
-            <th>ΑΡ. ΑΔ. ΕΡΓΑΣΙΑΣ</th>
+            <th class="req">Α.Φ.Μ.</th>
+            <th class="req">ΑΡ. ΑΔ. ΕΡΓΑΣΙΑΣ</th>
             <th class="req">ΕΠΩΝΥΜΟ</th>
             <th class="req">ΟΝΟΜΑ</th>
-            <th>ΠΑΤΡΩΝΥΜΟ</th>
+            <th class="req">ΠΑΤΡΩΝΥΜΟ</th>
             <th class="req">ΕΙΔΙΚΟΤΗΤΑ</th>
-            <th class="req">ΠΡΟΕΠΙΛΕΓΜΕΝΗ ΦΑΣΗ</th>
-            <th>ΠΟΛΛΑΠΛΕΣ ΦΑΣΕΙΣ</th>
-            <th>ΕΡΓΟΛΑΒΟΣ</th>
-            <th>ΑΦΜ ΕΡΓΟΛΑΒΟΥ</th>
+            <th class="req">DEFAULT PHASE</th>
+            <th>MULTI</th>
+            <th class="req">ΕΡΓΟΛΑΒΟΣ</th>
+            <th class="req">ΑΦΜ ΕΡΓΟΛΑΒΟΥ</th>
             <th></th>
           </tr>
         </thead>
@@ -224,15 +238,17 @@
     <h2>Μορφή Αρχείου CSV</h2>
     <p>Επικεφαλίδες (η σειρά δεν έχει σημασία):</p>
     <code>ama,amka,afm,arAdErgasias,eponimo,onoma,
-patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
-    <p>Υποχρεωτικά: <strong style="color:var(--yellow)">ama, amka, eponimo, onoma, eidikotita, fasi</strong></p>
-    <p>Τιμές για ΦΑΣΗ:<br>
+patronimo,eidikotita,defaultPhase,isMultiPhase,
+ergolabos,afmErgolabou</code>
+    <p>Όλα τα πεδία είναι <strong style="color:var(--orange)">υποχρεωτικά</strong>.</p>
+    <p>Τιμές για DEFAULT PHASE:<br>
     <code>01: Εκσκαφές & Οικοδομικός Σκελετός
 02: Τοιχοποιίες
 03: Επιχρίσματα (Σοβατίσματα)
 04: Δάπεδα - Επενδύσεις
 05: Διάφορες Εργασίες
 06: Εργασίες Εγκαταστάσεων</code></p>
+    <p>Τιμές για IS_MULTI_PHASE: <strong style="color:var(--yellow)">true / false</strong></p>
     <div class="modal-actions"><button class="btn btn-yellow btn-sm" onclick="closeModalDirect()">Εντάξει</button></div>
   </div>
 </div>
@@ -275,7 +291,7 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
       onoma:         w.onoma || '',
       patronimo:     w.patronimo || '',
       eidikotita:    w.eidikotita || '',
-      fasi:          w.default_phase || '',
+      defaultPhase:  w.default_phase || '',
       isMultiPhase:  w.is_multi_phase || false,
       ergolabos:     w.ergolabos || '',
       afmErgolabou:  w.afm_ergolabou || '',
@@ -295,7 +311,6 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
     btn.disabled = true;
     btn.innerHTML = '<span class="spinner"></span> Αποθήκευση…';
 
-    // Assign IDs to new workers
     const used = new Set(workers.filter(w => w.id).map(w => w.id));
     let n = 1001;
     workers.forEach(w => {
@@ -303,7 +318,6 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
       if (!w.registeredAt) w.registeredAt = new Date().toISOString();
     });
 
-    // Upsert all workers (insert or update by id)
     const rows = workers.map(w => ({
       id:             w.id,
       ama:            w.ama,
@@ -314,8 +328,8 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
       onoma:          w.onoma,
       patronimo:      w.patronimo,
       eidikotita:     w.eidikotita,
-      default_phase:  w.fasi,
-      is_multi_phase: w.isMultiPhase,
+      default_phase:  w.defaultPhase,
+      is_multi_phase: w.isMultiPhase || false,
       ergolabos:      w.ergolabos,
       afm_ergolabou:  w.afmErgolabou,
       registered_at:  w.registeredAt,
@@ -363,21 +377,41 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
 
   function addWorker() {
     const v = id => document.getElementById(id).value.trim();
-    const ama=v('ama'),amka=v('amka'),eponimo=v('eponimo'),onoma=v('onoma'),
-          eidikotita=v('eidikotita'),fasi=document.getElementById('fasi').value,
-          isMultiPhase=document.getElementById('isMultiPhase').checked;
-    if (!ama)        { showToast('⚠ Απαιτείται Α.Μ.Α.','#e8600a'); return; }
-    if (!amka)       { showToast('⚠ Απαιτείται Α.Μ.Κ.Α.','#e8600a'); return; }
-    if (!eponimo)    { showToast('⚠ Απαιτείται Επώνυμο','#e8600a'); return; }
-    if (!onoma)      { showToast('⚠ Απαιτείται Όνομα','#e8600a'); return; }
-    if (!eidikotita) { showToast('⚠ Απαιτείται Ειδικότητα','#e8600a'); return; }
-    if (!fasi)       { showToast('⚠ Επιλέξτε Προεπιλεγμένη Φάση','#e8600a'); return; }
-    workers.push({ id: nextId(), ama, amka, afm: v('afm'), arAdErgasias: v('arAd'),
-      eponimo, onoma, patronimo: v('patronimo'), eidikotita, fasi, isMultiPhase,
-      ergolabos: v('ergolabos'), afmErgolabou: v('afmErg'), registeredAt: new Date().toISOString() });
+    const ama          = v('ama');
+    const amka         = v('amka');
+    const afm          = v('afm');
+    const arAd         = v('arAd');
+    const eponimo      = v('eponimo');
+    const onoma        = v('onoma');
+    const patronimo    = v('patronimo');
+    const eidikotita   = v('eidikotita');
+    const defaultPhase = document.getElementById('defaultPhase').value;
+    const isMultiPhase = document.getElementById('isMultiPhase').checked;
+    const ergolabos    = v('ergolabos');
+    const afmErg       = v('afmErg');
+
+    if (!ama)          { showToast('⚠ Απαιτείται Α.Μ.Α.','#e8600a'); return; }
+    if (!amka)         { showToast('⚠ Απαιτείται Α.Μ.Κ.Α.','#e8600a'); return; }
+    if (!afm)          { showToast('⚠ Απαιτείται Α.Φ.Μ.','#e8600a'); return; }
+    if (!arAd)         { showToast('⚠ Απαιτείται Αρ. Αδ. Εργασίας','#e8600a'); return; }
+    if (!eponimo)      { showToast('⚠ Απαιτείται Επώνυμο','#e8600a'); return; }
+    if (!onoma)        { showToast('⚠ Απαιτείται Όνομα','#e8600a'); return; }
+    if (!patronimo)    { showToast('⚠ Απαιτείται Πατρώνυμο','#e8600a'); return; }
+    if (!eidikotita)   { showToast('⚠ Απαιτείται Ειδικότητα','#e8600a'); return; }
+    if (!defaultPhase) { showToast('⚠ Επιλέξτε Φάση Κατασκευής (Default)','#e8600a'); return; }
+    if (!ergolabos)    { showToast('⚠ Απαιτείται Εργολάβος','#e8600a'); return; }
+    if (!afmErg)       { showToast('⚠ Απαιτείται ΑΦΜ Εργολάβου','#e8600a'); return; }
+
+    workers.push({
+      id: nextId(), ama, amka, afm, arAdErgasias: arAd,
+      eponimo, onoma, patronimo, eidikotita,
+      defaultPhase, isMultiPhase, ergolabos,
+      afmErgolabou: afmErg, registeredAt: new Date().toISOString()
+    });
+
     ['ama','amka','afm','arAd','eponimo','onoma','patronimo','eidikotita','ergolabos','afmErg']
       .forEach(id => document.getElementById(id).value = '');
-    document.getElementById('fasi').value = '';
+    document.getElementById('defaultPhase').value = '';
     document.getElementById('isMultiPhase').checked = false;
     document.getElementById('ama').focus();
     renderTable();
@@ -385,7 +419,12 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
   }
 
   function enterAdd(e) { if (e.key === 'Enter') addWorker(); }
-  function hasErr(w) { return !w.ama || !w.amka || !w.eponimo || !w.onoma || !w.eidikotita || !w.fasi; }
+
+  function hasErr(w) {
+    return !w.ama || !w.amka || !w.afm || !w.arAdErgasias ||
+           !w.eponimo || !w.onoma || !w.patronimo || !w.eidikotita ||
+           !w.defaultPhase || !w.ergolabos || !w.afmErgolabou;
+  }
 
   function renderTable() {
     const q = filterQ.toLowerCase();
@@ -403,19 +442,21 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
         <td><span class="row-num">${i+1}</span></td>
         <td><input class="cell-input${!w.ama?' invalid':''}" value="${esc(w.ama)}" onchange="upd(${i},'ama',this.value)"></td>
         <td><input class="cell-input${!w.amka?' invalid':''}" value="${esc(w.amka)}" onchange="upd(${i},'amka',this.value)"></td>
-        <td><input class="cell-input" value="${esc(w.afm)}" onchange="upd(${i},'afm',this.value)" style="font-family:monospace;font-size:0.75rem"></td>
-        <td><input class="cell-input" value="${esc(w.arAdErgasias)}" onchange="upd(${i},'arAdErgasias',this.value)" style="font-family:monospace;font-size:0.75rem"></td>
+        <td><input class="cell-input${!w.afm?' invalid':''}" value="${esc(w.afm)}" onchange="upd(${i},'afm',this.value)" style="font-family:monospace;font-size:0.75rem"></td>
+        <td><input class="cell-input${!w.arAdErgasias?' invalid':''}" value="${esc(w.arAdErgasias)}" onchange="upd(${i},'arAdErgasias',this.value)" style="font-family:monospace;font-size:0.75rem"></td>
         <td><input class="cell-input${!w.eponimo?' invalid':''}" value="${esc(w.eponimo)}" onchange="upd(${i},'eponimo',this.value)"></td>
         <td><input class="cell-input${!w.onoma?' invalid':''}" value="${esc(w.onoma)}" onchange="upd(${i},'onoma',this.value)"></td>
-        <td><input class="cell-input" value="${esc(w.patronimo)}" onchange="upd(${i},'patronimo',this.value)"></td>
+        <td><input class="cell-input${!w.patronimo?' invalid':''}" value="${esc(w.patronimo)}" onchange="upd(${i},'patronimo',this.value)"></td>
         <td><input class="cell-input${!w.eidikotita?' invalid':''}" value="${esc(w.eidikotita)}" onchange="upd(${i},'eidikotita',this.value)"></td>
-        <td><select class="cell-select${!w.fasi?' invalid':''}" onchange="upd(${i},'fasi',this.value)">
+        <td><select class="cell-select${!w.defaultPhase?' invalid':''}" onchange="upd(${i},'defaultPhase',this.value)">
           <option value="">— Επιλογή —</option>
-          ${FASI.map(f=>`<option${w.fasi===f?' selected':''}>${f}</option>`).join('')}
+          ${FASI.map(f=>`<option${w.defaultPhase===f?' selected':''}>${f}</option>`).join('')}
         </select></td>
-        <td style="text-align:center"><input type="checkbox" ${w.isMultiPhase?'checked':''} onchange="upd(${i},'isMultiPhase',this.checked)"></td>
-        <td><input class="cell-input" value="${esc(w.ergolabos)}" onchange="upd(${i},'ergolabos',this.value)"></td>
-        <td><input class="cell-input" value="${esc(w.afmErgolabou)}" onchange="upd(${i},'afmErgolabou',this.value)" style="font-family:monospace;font-size:0.75rem"></td>
+        <td style="text-align:center">
+          <input type="checkbox" ${w.isMultiPhase?'checked':''} onchange="updBool(${i},'isMultiPhase',this.checked)" title="Multi-phase worker">
+        </td>
+        <td><input class="cell-input${!w.ergolabos?' invalid':''}" value="${esc(w.ergolabos)}" onchange="upd(${i},'ergolabos',this.value)"></td>
+        <td><input class="cell-input${!w.afmErgolabou?' invalid':''}" value="${esc(w.afmErgolabou)}" onchange="upd(${i},'afmErgolabou',this.value)" style="font-family:monospace;font-size:0.75rem"></td>
         <td><button class="del-btn" onclick="deleteRow(${i})">✕</button></td>
       </tr>`;
     }).join('');
@@ -424,12 +465,12 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
 
   function esc(s){ return (s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
   function upd(i,f,v){ workers[i][f]=v.trim(); const r=document.getElementById('row-'+i); if(r) r.className=hasErr(workers[i])?'error-row':''; updateValidation(); }
+  function updBool(i,f,v){ workers[i][f]=v; updateValidation(); }
   function filterTable(q){ filterQ=q; renderTable(); }
 
   async function deleteRow(i) {
     const w = workers[i];
     if (w.id && w.registeredAt) {
-      // Was saved in Supabase — delete there too
       await deleteFromSupabase(w.id);
     }
     workers.splice(i,1); renderTable();
@@ -477,19 +518,33 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
       if(lines.length<2){ showToast('Το CSV δεν έχει δεδομένα','#e8600a'); return; }
       const norm=s=>s.toLowerCase().replace(/[\s.\u0300-\u036f]/g,'').normalize('NFD');
       const headers=lines[0].split(',').map(h=>norm(h.replace(/^"|"$/g,'')));
-      const colMap={'ama':'ama','αμα':'ama','amka':'amka','αμκα':'amka','afm':'afm','αφμ':'afm',
-        'aradergasias':'arAdErgasias','eponimo':'eponimo','επωνυμο':'eponimo',
-        'onoma':'onoma','ονομα':'onoma','patronimo':'patronimo','πατρωνυμο':'patronimo',
-        'eidikotita':'eidikotita','ειδικοτητα':'eidikotita','fasi':'fasi','φαση':'fasi',
-        'ergolabos':'ergolabos','εργολαβος':'ergolabos','afmergolabou':'afmErgolabou'};
+      const colMap={
+        'ama':'ama','αμα':'ama',
+        'amka':'amka','αμκα':'amka',
+        'afm':'afm','αφμ':'afm',
+        'aradergasias':'arAdErgasias',
+        'eponimo':'eponimo','επωνυμο':'eponimo',
+        'onoma':'onoma','ονομα':'onoma',
+        'patronimo':'patronimo','πατρωνυμο':'patronimo',
+        'eidikotita':'eidikotita','ειδικοτητα':'eidikotita',
+        'defaultphase':'defaultPhase','fasi':'defaultPhase','φαση':'defaultPhase',
+        'ismultiphase':'isMultiPhase',
+        'ergolabos':'ergolabos','εργολαβος':'ergolabos',
+        'afmergolabou':'afmErgolabou'
+      };
       const mapped=headers.map(h=>colMap[h]||null);
       let added=0,skipped=0;
       const existingIds=new Set(workers.map(w=>w.id).filter(Boolean));
       for(let i=1;i<lines.length;i++){
         const vals=splitCSV(lines[i]);
         if(!vals.length||vals.every(v=>!v)) continue;
-        const w={registeredAt:new Date().toISOString()};
-        mapped.forEach((field,fi)=>{ if(field) w[field]=(vals[fi]||'').trim(); });
+        const w={registeredAt:new Date().toISOString(),isMultiPhase:false};
+        mapped.forEach((field,fi)=>{
+          if(!field) return;
+          const val=(vals[fi]||'').trim();
+          if(field==='isMultiPhase') w[field]=(val.toLowerCase()==='true'||val==='1');
+          else w[field]=val;
+        });
         if(!w.eponimo&&!w.onoma&&!w.ama){ skipped++; continue; }
         if(w.id&&existingIds.has(w.id)){ skipped++; continue; }
         if(w.id) existingIds.add(w.id);
@@ -505,8 +560,8 @@ patronimo,eidikotita,fasi,ergolabos,afmErgolabou</code>
 
   function downloadTemplate(){
     const BOM='\uFEFF';
-    const h='ama,amka,afm,arAdErgasias,eponimo,onoma,patronimo,eidikotita,fasi,ergolabos,afmErgolabou';
-    const ex='123456789,01234567890,123456789,654321,Παπαδόπουλος,Γιώργης,Νικόλαος,Χτίστης,01: Εκσκαφές & Οικοδομικός Σκελετός,ABC Εργολαβική,987654321';
+    const h='ama,amka,afm,arAdErgasias,eponimo,onoma,patronimo,eidikotita,defaultPhase,isMultiPhase,ergolabos,afmErgolabou';
+    const ex='123456789,01234567890,123456789,654321,Παπαδόπουλος,Γιώργης,Νικόλαος,Χτίστης,01: Εκσκαφές & Οικοδομικός Σκελετός,false,ABC Εργολαβική,987654321';
     const blob=new Blob([BOM+h+'\n'+ex+'\n'],{type:'text/csv;charset=utf-8'});
     const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='workers-template.csv'; a.click(); URL.revokeObjectURL(a.href);
     showToast('Πρότυπο CSV λήφθηκε');
