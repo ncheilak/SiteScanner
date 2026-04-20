@@ -643,14 +643,13 @@
     let phaseToUse = '';
     if (dbRecord) {
       if (dbRecord.isMultiPhase) {
-        // Worker can work in multiple phases - ask user for current phase
-        const userPhase = prompt(
-          `Ο εργαζόμενος ${dbRecord.eponimo} ${dbRecord.onoma} μπορεί να απασχοληθεί σε πολλαπλές φάσεις.\n\n` +
-          `Προεπιλεγμένη φάση: ${dbRecord.defaultPhase}\n\n` +
-          `Εισάγετε την τρέχουσα φάση (αφήστε κενό για προεπιλεγμένη):`,
-          dbRecord.defaultPhase
-        );
-        phaseToUse = (userPhase !== null && userPhase.trim() !== '') ? userPhase.trim() : dbRecord.defaultPhase;
+        // Worker can work in multiple phases - show modal with dropdown
+        showPhaseModal(dbRecord, (selectedPhase) => {
+          if (selectedPhase) {
+            completeCheckin(dbRecord, selectedPhase);
+          }
+        });
+        return;
       } else {
         // Use default phase
         phaseToUse = dbRecord.defaultPhase;
@@ -659,7 +658,6 @@
       // No record found, use phase from QR if available
       phaseToUse = data.fasi || '';
     }
-    
     const worker = dbRecord || {
       id: data.id, eponimo: data.fn || '?', onoma: data.ln || '?',
       eidikotita: data.trade || data.eidikotita || '?',
@@ -740,17 +738,17 @@
       return;
     }
     
+
     // Determine the phase to use
     let phaseToUse = '';
     if (w.isMultiPhase) {
-      // Worker can work in multiple phases - ask user for current phase
-      const userPhase = prompt(
-        `Ο εργαζόμενος ${w.eponimo} ${w.onoma} μπορεί να απασχοληθεί σε πολλαπλές φάσεις.\\n\\n` +
-        `Προεπιλεγμένη φάση: ${w.defaultPhase}\\n\\n` +
-        `Εισάγετε την τρέχουσα φάση (αφήστε κενό για προεπιλεγμένη):`,
-        w.defaultPhase
-      );
-      phaseToUse = (userPhase !== null && userPhase.trim() !== '') ? userPhase.trim() : w.defaultPhase;
+      // Worker can work in multiple phases - show modal with dropdown
+      showPhaseModal(w, (selectedPhase) => {
+        if (selectedPhase) {
+          completeManualCheckin(w, selectedPhase);
+        }
+      });
+      return;
     } else {
       // Use default phase
       phaseToUse = w.defaultPhase;
@@ -893,8 +891,93 @@
     showToast(`✓ Η εγγραφή διαγράφηκε`, '#23a045');
   }
 
+
+  // Phase Modal Functions
+  let phaseCallback = null;
+  
+  function showPhaseModal(worker, callback) {
+    phaseCallback = callback;
+    const modal = document.getElementById('phaseModal');
+    const info = document.getElementById('phaseModalInfo');
+    const select = document.getElementById('phaseSelect');
+    
+    info.textContent = `Εργαζόμενος: ${worker.eponimo} ${worker.onoma}\nΠροεπιλεγμένη φάση: ${worker.defaultPhase}`;
+    select.value = '';
+    modal.style.display = 'flex';
+  }
+  
+  function hidePhaseModal() {
+    document.getElementById('phaseModal').style.display = 'none';
+    phaseCallback = null;
+  }
+  
+  function completeCheckin(worker, phase) {
+    const now = new Date();
+    const timeIn = now.toTimeString().slice(0, 5);
+    const logDate = now.toISOString().slice(0, 10);
+    
+    const entry = {
+      worker_id: worker.id,
+      site_id: currentSiteId,
+      time_in: timeIn,
+      log_date: logDate,
+      fasi: phase
+    };
+    
+    saveCheckin(entry);
+    hidePhaseModal();
+  }
+
+  function completeManualCheckin(worker, phase) {
+    const now = new Date();
+    const timeIn = now.toTimeString().slice(0, 5);
+    const entry = {
+      id: worker.id, eponimo: worker.eponimo || '', onoma: worker.onoma || '',
+      ama: worker.ama || '', amka: worker.amka || '',
+      eidikotita: worker.eidikotita || '', fasi: phase,
+      ergolabos: worker.ergolabos || '', afmErgolabou: worker.afmErgolabou || '',
+      timeIn, date: `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`
+    };
+    
+    saveCheckin(entry);
+    hidePhaseModal();
+  }
+
+  
+  // Event listeners for phase modal
+  document.getElementById('phaseConfirmBtn').addEventListener('click', () => {
+    const selectedPhase = document.getElementById('phaseSelect').value;
+    if (selectedPhase && phaseCallback) {
+      phaseCallback(selectedPhase);
+    } else if (!selectedPhase) {
+      showToast('⚠ Επιλέξτε μια φάση', '#e8600a');
+    }
+  });
+  
+  document.getElementById('phaseCancelBtn').addEventListener('click', hidePhaseModal);
+  
   // ── START ──
   init();
 </script>
+  <!-- Phase Selection Modal -->
+  <div id="phaseModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#1a1a1a;border:2px solid #f5c800;border-radius:8px;padding:24px;max-width:90%;width:400px;box-shadow:0 4px 20px rgba(245,200,0,0.3);">
+      <h3 style="color:#f5c800;margin-bottom:16px;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:1px;">Επιλογή Φάσης Κατασκευής</h3>
+      <p id="phaseModalInfo" style="color:#f4efe6;margin-bottom:16px;font-size:0.95rem;"></p>
+      <select id="phaseSelect" style="width:100%;padding:12px;background:#252525;color:#f4efe6;border:1px solid #f5c800;border-radius:4px;font-size:1rem;margin-bottom:20px;">
+        <option value="">-- Επιλέξτε Φάση --</option>
+        <option value="01: Εκσκαφές & Οικοδομικός Σκελετός">01: Εκσκαφές & Οικοδομικός Σκελετός</option>
+        <option value="02: Τοιχοποιίες">02: Τοιχοποιίες</option>
+        <option value="03: Επιχρίσματα (Σοβατίσματα)">03: Επιχρίσματα (Σοβατίσματα)</option>
+        <option value="04: Δάπεδα - Επενδύσεις">04: Δάπεδα - Επενδύσεις</option>
+        <option value="05: Διάφορες Εργασίες">05: Διάφορες Εργασίες</option>
+        <option value="06: Εργασίες Εγκαταστάσεων">06: Εργασίες Εγκαταστάσεων</option>
+      </select>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="phaseCancelBtn" style="padding:10px 20px;background:#333;color:#f4efe6;border:none;border-radius:4px;cursor:pointer;font-size:0.95rem;">Ακύρωση</button>
+        <button id="phaseConfirmBtn" style="padding:10px 20px;background:#f5c800;color:#0a0a0a;border:none;border-radius:4px;cursor:pointer;font-weight:600;font-size:0.95rem;">Αποθήκευση</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
