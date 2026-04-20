@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SiteLog — QR Generator</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --black:#0d0d0d;--yellow:#f5c800;--yellow-dk:#c9a200;--orange:#e8600a;
+    --white:#f4efe6;--gray:#1e1e1e;--gray2:#2a2a2a;--gray3:#3d3d3d;
+    --gray4:#5a5a5a;--green:#2ea84f;--red:#d93b3b;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--black);color:var(--white);font-family:'IBM Plex Sans',sans-serif;min-height:100vh}
+
+  header{
+    background:var(--yellow);color:var(--black);
+    padding:0 24px;height:54px;
+    display:flex;align-items:center;justify-content:space-between;
+    border-bottom:4px solid var(--orange);
+    position:sticky;top:0;z-index:100;
+  }
+  .logo{font-family:'Bebas Neue',sans-serif;font-size:1.7rem;letter-spacing:3px}
+  .logo em{color:var(--orange);font-style:normal}
+  .logo sub{font-size:0.6rem;letter-spacing:1px;opacity:0.6;vertical-align:middle;margin-left:6px;font-family:'IBM Plex Mono',monospace}
+  .back-btn{
+    display:flex;align-items:center;gap:6px;
+    font-family:'IBM Plex Mono',monospace;font-size:0.65rem;font-weight:600;
+    letter-spacing:1px;text-transform:uppercase;
+    background:rgba(0,0,0,0.12);border:none;border-radius:2px;
+    color:var(--black);padding:6px 12px;cursor:pointer;
+    text-decoration:none;transition:background 0.15s;
+  }
+  .back-btn:hover{background:rgba(0,0,0,0.22)}
+
+  .search-section{
+    max-width:700px;margin:40px auto 0;padding:0 20px;
+  }
+  .search-label{
+    font-family:'IBM Plex Mono',monospace;font-size:0.6rem;font-weight:600;
+    color:var(--orange);text-transform:uppercase;letter-spacing:2px;
+    margin-bottom:10px;display:flex;align-items:center;gap:8px;
+  }
+  .search-label::before{content:'';display:inline-block;width:20px;height:2px;background:var(--orange)}
+  .search-box{
+    display:flex;gap:8px;
+  }
+  .search-box input{
+    flex:1;background:var(--gray2);border:1px solid var(--gray3);border-radius:2px;
+    color:var(--white);font-family:'IBM Plex Sans',sans-serif;font-size:1rem;
+    padding:12px 16px;outline:none;transition:border-color 0.15s;
+  }
+  .search-box input:focus{border-color:var(--yellow)}
+  .search-box input::placeholder{color:var(--gray4)}
+
+  .btn{border:none;border-radius:2px;cursor:pointer;font-family:'Bebas Neue',sans-serif;letter-spacing:1.5px;transition:opacity 0.15s,transform 0.1s;white-space:nowrap}
+  .btn:active{transform:scale(0.97)}
+  .btn-yellow{background:var(--yellow);color:var(--black);padding:12px 22px;font-size:1rem}
+  .btn-yellow:hover{background:var(--yellow-dk)}
+  .btn-outline{background:transparent;border:1px solid var(--gray3);color:var(--white);padding:7px 14px;font-size:0.82rem}
+  .btn-outline:hover{border-color:var(--yellow);color:var(--yellow)}
+  .btn-sm{padding:5px 12px;font-size:0.78rem}
+
+  .search-hint{
+    font-family:'IBM Plex Mono',monospace;font-size:0.6rem;color:var(--gray4);
+    margin-top:8px;line-height:1.6;
+  }
+
+  .results-section{max-width:700px;margin:32px auto;padding:0 20px 60px}
+  .results-label{
+    font-family:'IBM Plex Mono',monospace;font-size:0.58rem;font-weight:600;
+    color:var(--gray4);text-transform:uppercase;letter-spacing:1.5px;
+    margin-bottom:14px;display:flex;align-items:center;gap:10px;
+  }
+  .results-label::after{content:'';flex:1;height:1px;background:var(--gray3)}
+
+  .worker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+  .worker-card{
+    background:var(--gray);border:1px solid var(--gray3);border-radius:3px;
+    padding:16px;display:flex;flex-direction:column;gap:12px;
+    transition:border-color 0.15s;
+  }
+  .worker-card:hover{border-color:var(--yellow)}
+  .worker-name{font-weight:600;font-size:1rem;line-height:1.2}
+  .worker-meta{
+    font-family:'IBM Plex Mono',monospace;font-size:0.65rem;
+    color:var(--gray4);line-height:1.8;
+  }
+  .worker-meta strong{color:var(--white)}
+  .badge{
+    display:inline-block;padding:2px 8px;border-radius:2px;
+    font-family:'IBM Plex Mono',monospace;font-size:0.58rem;
+    font-weight:600;text-transform:uppercase;letter-spacing:0.5px;
+  }
+  .badge-yellow{background:rgba(245,200,0,.12);color:var(--yellow);border:1px solid rgba(245,200,0,.25)}
+  .badge-green{background:rgba(46,168,79,.12);color:#5de07a;border:1px solid rgba(46,168,79,.25)}
+  .badge-gray{background:rgba(90,90,90,.2);color:#aaa;border:1px solid rgba(90,90,90,.3)}
+  .qr-area{display:flex;justify-content:center;background:var(--gray2);border-radius:3px;padding:12px}
+  .worker-actions{display:flex;gap:6px;flex-wrap:wrap}
+
+  .empty-state{
+    text-align:center;padding:60px 20px;
+    font-family:'IBM Plex Mono',monospace;font-size:0.78rem;color:var(--gray4);
+  }
+  .empty-state .icon{font-size:2.5rem;margin-bottom:12px}
+
+  .spinner{display:inline-block;width:12px;height:12px;border:2px solid var(--gray3);border-top-color:var(--yellow);border-radius:50%;animation:spin 0.7s linear infinite;vertical-align:middle;margin-right:5px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  .toast{position:fixed;bottom:20px;right:20px;background:var(--green);color:#fff;font-family:'IBM Plex Mono',monospace;font-size:0.75rem;padding:9px 16px;border-radius:3px;opacity:0;transform:translateY(8px);transition:opacity 0.2s,transform 0.2s;pointer-events:none;z-index:999}
+  .toast.show{opacity:1;transform:translateY(0)}
+
+  @media print{
+    body *{visibility:hidden}
+    #printArea,#printArea *{visibility:visible}
+    #printArea{position:fixed;top:0;left:0;width:100%}
+  }
+  #printArea{display:none}
+  .print-badge{width:85mm;padding:8mm;border:2px solid #000;font-family:'IBM Plex Sans',sans-serif;text-align:center;background:#fff;color:#000;page-break-after:always;display:inline-block}
+  .pb-site{font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;margin-bottom:4px}
+  .pb-name{font-family:'Bebas Neue',sans-serif;font-size:1.4rem;margin:4px 0}
+  .pb-trade{font-size:0.75rem;font-weight:600;text-transform:uppercase;letter-spacing:1px;color:#555}
+  .pb-id{font-family:'IBM Plex Mono',monospace;font-size:0.7rem;color:#888;margin-top:4px}
+  .pb-qr{margin:8px auto;display:flex;justify-content:center}
+  .pb-bar{background:#000;color:#fff;font-family:'Bebas Neue',sans-serif;letter-spacing:2px;font-size:0.85rem;padding:3px 0;margin-top:6px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Site<em>Log</em> <sub>QR Generator</sub></div>
+  <a href="index.html" class="back-btn">← Αρχική</a>
+</header>
+
+<div class="search-section">
+  <div class="search-label">Αναζήτηση Εργαζομένου</div>
+  <div class="search-box">
+    <input type="text" id="searchInput"
+      placeholder="Επώνυμο, Όνομα ή Εργολάβος…"
+      onkeydown="if(event.key==='Enter') doSearch()">
+    <button class="btn btn-yellow" onclick="doSearch()" id="searchBtn">Αναζήτηση</button>
+  </div>
+  <div class="search-hint">Αναζητήστε με τουλάχιστον 2 χαρακτήρες · Εμφανίζονται έως 20 αποτελέσματα</div>
+</div>
+
+<div class="results-section" id="resultsSection" style="display:none">
+  <div class="results-label" id="resultsLabel">Αποτελέσματα</div>
+  <div class="worker-grid" id="workerGrid"></div>
+</div>
+
+<div class="empty-state" id="emptyState">
+  <div class="icon">🔍</div>
+  <div>Αναζητήστε εργαζόμενο για να δείτε το QR badge του.</div>
+</div>
+
+<div id="printArea"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+  const SUPABASE_URL = 'https://nlrkhehgkfwdkxuknwwo.supabase.co';
+  const SUPABASE_KEY = 'sb_publishable_ybrvNyLSgHkqcn3TlLJZQQ_uyj9_aBI';
+  const { createClient } = supabase;
+  const db = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+  let qrCache = {};
+
+  // ── SEARCH ──
+  async function doSearch() {
+    const q = document.getElementById('searchInput').value.trim();
+    if (q.length < 2) { showToast('Πληκτρολογήστε τουλάχιστον 2 χαρακτήρες', '#e8600a'); return; }
+
+    const btn = document.getElementById('searchBtn');
+    btn.innerHTML = '<span class="spinner"></span>';
+    btn.disabled = true;
+
+    const { data, error } = await db
+      .from('workers')
+      .select('id, eponimo, onoma, eidikotita, ergolabos, default_phase, is_multi_phase, ama')
+      .or(`eponimo.ilike.%${q}%,onoma.ilike.%${q}%,ergolabos.ilike.%${q}%`)
+      .order('eponimo')
+      .limit(20);
+
+    btn.innerHTML = 'Αναζήτηση';
+    btn.disabled = false;
+
+    if (error) { showToast('⚠ Σφάλμα αναζήτησης: ' + error.message, '#e8600a'); return; }
+
+    document.getElementById('emptyState').style.display = 'none';
+    const section = document.getElementById('resultsSection');
+    section.style.display = 'block';
+
+    if (!data || data.length === 0) {
+      document.getElementById('resultsLabel').textContent = 'Δεν βρέθηκαν αποτελέσματα';
+      document.getElementById('workerGrid').innerHTML =
+        '<div style="font-family:\'IBM Plex Mono\',monospace;font-size:0.75rem;color:var(--gray4);padding:20px 0">Δοκιμάστε διαφορετικό όρο αναζήτησης.</div>';
+      return;
+    }
+
+    const workers = data.map(w => ({
+      id:           w.id,
+      eponimo:      w.eponimo || '',
+      onoma:        w.onoma || '',
+      eidikotita:   w.eidikotita || '',
+      ergolabos:    w.ergolabos || '',
+      defaultPhase: w.default_phase || '',
+      isMultiPhase: w.is_multi_phase || false,
+      ama:          w.ama || '',
+    }));
+
+    document.getElementById('resultsLabel').textContent =
+      `${workers.length} αποτέλεσμα${workers.length !== 1 ? 'τα' : ''}`;
+
+    renderResults(workers);
+  }
+
+  function renderResults(workers) {
+    const grid = document.getElementById('workerGrid');
+    grid.innerHTML = workers.map(w => `
+      <div class="worker-card" id="wcard-${w.id}">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">
+          <div>
+            <div class="worker-name">${w.eponimo} ${w.onoma}</div>
+            <div style="margin-top:5px;display:flex;gap:4px;flex-wrap:wrap">
+              <span class="badge badge-yellow">${w.eidikotita || '—'}</span>
+              ${w.isMultiPhase ? '<span class="badge badge-green">MULTI</span>' : ''}
+            </div>
+          </div>
+          <span class="badge badge-gray" style="font-size:0.55rem;flex-shrink:0">${w.id}</span>
+        </div>
+        <div class="worker-meta">
+          ${w.ergolabos ? '<div>🏗 <strong>' + w.ergolabos + '</strong></div>' : ''}
+          ${w.defaultPhase ? '<div>📐 ' + w.defaultPhase + '</div>' : ''}
+          ${w.ama ? '<div>🪪 ΑΜΑ: ' + w.ama + '</div>' : ''}
+        </div>
+        <div class="qr-area" id="qr-${w.id}">
+          <span class="spinner"></span>
+        </div>
+        <div class="worker-actions">
+          <button class="btn btn-yellow btn-sm" onclick="printBadge('${w.id}')">🖨 Badge</button>
+          <button class="btn btn-outline btn-sm" onclick="downloadQR('${w.id}')">⬇ QR PNG</button>
+        </div>
+      </div>
+    `).join('');
+
+    // Store worker data on window for print/download access
+    window._searchResults = workers;
+
+    // Generate QR codes async
+    workers.forEach(w => generateAndShow(w));
+  }
+
+  // ── QR ──
+  // Minimal payload: only what the scanner needs
+  function buildPayload(w) {
+    return JSON.stringify({
+      id:           w.id,
+      fn:           w.eponimo,
+      ln:           w.onoma,
+      trade:        w.eidikotita,
+      erg:          w.ergolabos,
+      defaultPhase: w.defaultPhase,
+      isMultiPhase: w.isMultiPhase,
+    });
+  }
+
+  function generateQRDataUrl(w) {
+    if (qrCache[w.id]) return Promise.resolve(qrCache[w.id]);
+    return new Promise((resolve, reject) => {
+      try {
+        const qr = qrcode(0, 'M');
+        qr.addData(buildPayload(w));
+        qr.make();
+        const SIZE = 400;
+        const canvas = document.createElement('canvas');
+        canvas.width = SIZE; canvas.height = SIZE;
+        const ctx = canvas.getContext('2d');
+        const mc = qr.getModuleCount();
+        const cs = SIZE / mc;
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, SIZE, SIZE);
+        ctx.fillStyle = '#000';
+        for (let r = 0; r < mc; r++)
+          for (let c = 0; c < mc; c++)
+            if (qr.isDark(r, c)) ctx.fillRect(Math.floor(c*cs), Math.floor(r*cs), Math.ceil(cs), Math.ceil(cs));
+        qrCache[w.id] = canvas.toDataURL('image/png');
+        resolve(qrCache[w.id]);
+      } catch(e) { reject(e); }
+    });
+  }
+
+  async function generateAndShow(w) {
+    try {
+      const url = await generateQRDataUrl(w);
+      const el = document.getElementById('qr-' + w.id);
+      if (el) el.innerHTML = `<img src="${url}" width="140" height="140" style="border-radius:3px;border:3px solid #fff;image-rendering:pixelated">`;
+    } catch(e) { console.error(e); }
+  }
+
+  async function downloadQR(id) {
+    const w = (window._searchResults || []).find(x => x.id === id);
+    if (!w) return;
+    const url = await generateQRDataUrl(w);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `QR-${w.id}-${w.eponimo}-${w.onoma}.png`;
+    a.click();
+  }
+
+  async function printBadge(id) {
+    const w = (window._searchResults || []).find(x => x.id === id);
+    if (!w) return;
+    const qrSrc = await generateQRDataUrl(w);
+    const area = document.getElementById('printArea');
+    area.innerHTML = `
+      <div class="print-badge">
+        <div class="pb-site">⛑ SITE ACCESS BADGE${w.isMultiPhase ? ' · MULTI-PHASE' : ''}</div>
+        <div class="pb-name">${w.eponimo} ${w.onoma}</div>
+        <div class="pb-trade">${w.eidikotita}${w.ergolabos ? ' · ' + w.ergolabos : ''}</div>
+        <div class="pb-qr"><img src="${qrSrc}" width="200" height="200" style="image-rendering:pixelated"></div>
+        <div class="pb-id">ID: ${w.id}${w.ama ? ' | ΑΜΑ: ' + w.ama : ''}</div>
+        <div class="pb-bar">ΣΑΡΩΣΤΕ ΓΙΑ CHECK-IN</div>
+      </div>`;
+    area.style.display = 'block';
+    setTimeout(() => { window.print(); setTimeout(() => { area.style.display = 'none'; area.innerHTML = ''; }, 1000); }, 300);
+  }
+
+  function showToast(msg, color) {
+    const t = document.getElementById('toast');
+    t.textContent = msg; t.style.background = color || '#2ea84f';
+    t.classList.add('show'); clearTimeout(t._t);
+    t._t = setTimeout(() => t.classList.remove('show'), 2800);
+  }
+</script>
+</body>
+</html>
